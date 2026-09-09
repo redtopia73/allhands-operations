@@ -14,6 +14,7 @@ async function ensureTables() {
   await db.query("CREATE TABLE IF NOT EXISTS allhands_job_posts (id BIGSERIAL PRIMARY KEY, data JSONB NOT NULL, status TEXT NOT NULL DEFAULT 'active', created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW())");
   await db.query("CREATE TABLE IF NOT EXISTS allhands_job_applications (id BIGSERIAL PRIMARY KEY, job_id TEXT NOT NULL, job_title TEXT NOT NULL, worker_data JSONB NOT NULL, status TEXT NOT NULL DEFAULT 'applied', created_at TIMESTAMPTZ NOT NULL DEFAULT NOW())");
   await db.query("ALTER TABLE allhands_job_applications ADD COLUMN IF NOT EXISTS employer_note JSONB");
+  await db.query("CREATE TABLE IF NOT EXISTS allhands_operation_documents (id BIGSERIAL PRIMARY KEY, owner_company_id TEXT, document_type TEXT NOT NULL, data JSONB NOT NULL, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW())");
   return db;
 }
 
