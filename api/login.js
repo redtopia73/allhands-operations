@@ -4,6 +4,22 @@ const sign = (value, secret) => crypto.createHmac('sha256', secret).update(value
 const clean = value => String(value || '').trim().slice(0, 200);
 
 module.exports = async (req, res) => {
+  if (req.method === 'GET' && req.query?.sso) {
+    try {
+      const token = String(req.query.sso), [payload, signature] = token.split('.');
+      const secret = process.env.OPERATIONS_SSO_SECRET || process.env.ADMIN_SESSION_SECRET;
+      const expected = crypto.createHmac('sha256', secret || '').update(payload).digest('base64url');
+      if (!secret || !signature || signature.length !== expected.length || !crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expected))) throw new Error('invalid-sso');
+      const session = JSON.parse(Buffer.from(payload, 'base64url').toString());
+      if (session.role !== 'company' || !Number.isSafeInteger(session.id) || session.expires <= Date.now()) throw new Error('expired-sso');
+      const companyPayload = Buffer.from(JSON.stringify({ role:'company', id:session.id, expires:Date.now()+86400000 })).toString('base64url');
+      res.setHeader('Set-Cookie', `allhands_company=${companyPayload}.${sign(companyPayload, process.env.ADMIN_SESSION_SECRET)}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=86400`);
+      res.setHeader('Location', '/');
+      return res.status(302).end();
+    } catch {
+      return res.status(401).send('운영관리 자동 로그인이 만료되었거나 올바르지 않습니다. 올핸잡에서 다시 시도해 주세요.');
+    }
+  }
   if (req.method !== 'POST') return res.status(405).json({ error: '로그인 요청만 사용할 수 있습니다.' });
   try {
     const input = body(req), secret = process.env.ADMIN_SESSION_SECRET;
