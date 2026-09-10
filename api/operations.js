@@ -55,6 +55,7 @@ module.exports = async (req, res) => {
         accountNumber: String(input.accountNumber || previous.operation?.accountNumber || ''),
         accountHolder: String(input.accountHolder || previous.operation?.accountHolder || ''),
         assignedJobId: String(input.assignedJobId || previous.operation?.assignedJobId || ''),
+        attendanceCalendar: input.attendanceCalendar && typeof input.attendanceCalendar === 'object' ? input.attendanceCalendar : (previous.operation?.attendanceCalendar || {}),
         updatedAt: new Date().toISOString()
       };
       await db.query('UPDATE allhands_job_applications SET employer_note=$1::jsonb WHERE id=$2', [JSON.stringify({ ...previous, operation }), appId]);
