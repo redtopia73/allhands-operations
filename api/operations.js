@@ -1,4 +1,13 @@
+const crypto = require('crypto');
 const { ensureTables, valid, body, errorKind } = require('./_auth.cjs');
+
+function operationPhotoUrl(pathname, companyId, admin) {
+  const secret = process.env.OPERATIONS_SSO_SECRET;
+  if (!secret || !pathname) return '';
+  const payload = Buffer.from(JSON.stringify({ pathname, companyId: companyId || '', admin: Boolean(admin), expires: Date.now() + 10 * 60 * 1000 })).toString('base64url');
+  const signature = crypto.createHmac('sha256', secret).update(payload).digest('base64url');
+  return `https://allhands-job.vercel.app/api/file-view?pathname=${encodeURIComponent(pathname)}&operationsToken=${payload}.${signature}`;
+}
 
 module.exports = async (req, res) => {
   try {
@@ -72,7 +81,7 @@ module.exports = async (req, res) => {
         people.forEach(person => {
           const memberId = Number(person.worker_data?.memberId);
           const photoPath = photoByMemberId.get(memberId);
-          if (photoPath && !person.worker_data?.photoPath) person.worker_data = { ...person.worker_data, photoPath };
+          if (photoPath) person.worker_data = { ...person.worker_data, photoPath, photoUrl: operationPhotoUrl(photoPath, ownerCompanyId, admin) };
         });
       }
       const documents = await db.query(
