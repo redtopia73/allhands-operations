@@ -65,6 +65,16 @@ module.exports = async (req, res) => {
           : "SELECT a.id,a.job_id,a.job_title,a.worker_data,a.status,a.employer_note FROM allhands_job_applications a JOIN allhands_job_posts j ON a.job_id='db-'||j.id::text WHERE j.data->>'ownerCompanyId'=$1 ORDER BY a.created_at DESC LIMIT 300",
         admin ? [] : [ownerCompanyId]
       );
+      const memberIds = people.map(item => Number(item.worker_data?.memberId)).filter(Number.isSafeInteger);
+      if (memberIds.length) {
+        const workers = await db.query("SELECT id,data FROM allhands_signup_applications WHERE kind='worker' AND id=ANY($1::bigint[])", [memberIds]);
+        const photoByMemberId = new Map(workers.map(worker => [Number(worker.id), String(worker.data?.photoPath || '')]));
+        people.forEach(person => {
+          const memberId = Number(person.worker_data?.memberId);
+          const photoPath = photoByMemberId.get(memberId);
+          if (photoPath && !person.worker_data?.photoPath) person.worker_data = { ...person.worker_data, photoPath };
+        });
+      }
       const documents = await db.query(
         admin
           ? 'SELECT id,document_type,data,updated_at FROM allhands_operation_documents ORDER BY updated_at DESC LIMIT 100'
