@@ -64,7 +64,13 @@ module.exports = async (req, res) => {
           : 'SELECT id,document_type,data,updated_at FROM allhands_operation_documents WHERE owner_company_id=$1 ORDER BY updated_at DESC LIMIT 100',
         admin ? [] : [ownerCompanyId]
       );
-      return res.status(200).json({ jobs, people, documents, role: admin ? 'admin' : 'company' });
+      let companyName = '';
+      if (company) {
+        const companyRows = await db.query('SELECT data FROM allhands_signup_applications WHERE id=$1 LIMIT 1', [Number(company.id)]);
+        const companyData = companyRows[0]?.data || {};
+        companyName = String(companyData.companyName || companyData.company || companyData.name || '').trim();
+      }
+      return res.status(200).json({ jobs, people, documents, role: admin ? 'admin' : 'company', companyName });
     }
 
     return res.status(405).json({ error: '허용되지 않은 요청입니다.' });
