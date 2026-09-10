@@ -55,6 +55,8 @@ module.exports = async (req, res) => {
         accountNumber: String(input.accountNumber || previous.operation?.accountNumber || ''),
         accountHolder: String(input.accountHolder || previous.operation?.accountHolder || ''),
         assignedJobId: String(input.assignedJobId || previous.operation?.assignedJobId || ''),
+        hourlyRate: String(input.hourlyRate || previous.operation?.hourlyRate || '10320'),
+        workType: String(input.workType || previous.operation?.workType || '주간'),
         attendanceCalendar: input.attendanceCalendar && typeof input.attendanceCalendar === 'object' ? input.attendanceCalendar : (previous.operation?.attendanceCalendar || {}),
         updatedAt: new Date().toISOString()
       };
