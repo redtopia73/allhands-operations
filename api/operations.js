@@ -11,8 +11,8 @@ module.exports = async (req, res) => {
 
     if (req.method === 'POST') {
       const input = body(req);
-      if (input.action === 'quote-save' || input.action === 'contract-save') {
-        const documentType = input.action === 'quote-save' ? 'quote' : 'contract';
+      if (input.action === 'quote-save' || input.action === 'contract-save' || input.action === 'dispatch-contract-save') {
+        const documentType = input.action === 'quote-save' ? 'quote' : input.action === 'dispatch-contract-save' ? 'dispatch-contract' : 'contract';
         const document = input.document && typeof input.document === 'object' ? input.document : {};
         const rows = await db.query(
           'INSERT INTO allhands_operation_documents (owner_company_id,document_type,data) VALUES ($1,$2,$3::jsonb) RETURNING id,updated_at',
