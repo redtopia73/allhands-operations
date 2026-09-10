@@ -32,6 +32,7 @@ module.exports = async (req, res) => {
       if (!rows[0]) return res.status(404).json({ error: '권한이 없거나 대상 인력이 없습니다.' });
       const previous = rows[0].employer_note || {};
       const operation = {
+        ...(previous.operation || {}),
         attendance: String(input.attendance || ''),
         workDays: String(input.workDays || ''),
         workHours: String(input.workHours || ''),
@@ -39,6 +40,11 @@ module.exports = async (req, res) => {
         grossPay: String(input.grossPay || ''),
         netPay: String(input.netPay || ''),
         payDate: String(input.payDate || ''),
+        assignmentDate: String(input.assignmentDate || previous.operation?.assignmentDate || ''),
+        resignationDate: String(input.resignationDate || previous.operation?.resignationDate || ''),
+        bankName: String(input.bankName || previous.operation?.bankName || ''),
+        accountNumber: String(input.accountNumber || previous.operation?.accountNumber || ''),
+        accountHolder: String(input.accountHolder || previous.operation?.accountHolder || ''),
         updatedAt: new Date().toISOString()
       };
       await db.query('UPDATE allhands_job_applications SET employer_note=$1::jsonb WHERE id=$2', [JSON.stringify({ ...previous, operation }), appId]);
