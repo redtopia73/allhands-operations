@@ -1,4 +1,19 @@
+const crypto = require('crypto');
 const { ensureTables, valid, body, errorKind } = require('./_auth.cjs');
+
+function operationPhotoUrl(pathname, companyId, admin) {
+  const secret = process.env.OPERATIONS_SSO_SECRET;
+  if (!secret || !pathname) return '';
+  const payload = Buffer.from(JSON.stringify({ pathname, companyId: companyId || '', admin: Boolean(admin), expires: Date.now() + 10 * 60 * 1000 })).toString('base64url');
+  const signature = crypto.createHmac('sha256', secret).update(payload).digest('base64url');
+  return `https://allhands-job.vercel.app/api/file-view?pathname=${encodeURIComponent(pathname)}&operationsToken=${payload}.${signature}`;
+}
+
+function updatedOperation(previous, input) {
+  return {
+    ...(previous || {}), attendance: String(input.attendance || ''), workDays: String(input.workDays || ''), workHours: String(input.workHours || ''), dailyRate: String(input.dailyRate || ''), grossPay: String(input.grossPay || ''), netPay: String(input.netPay || ''), payDate: String(input.payDate || ''), assignmentDate: String(input.assignmentDate || previous?.assignmentDate || ''), resignationDate: String(input.resignationDate || previous?.resignationDate || ''), bankName: String(input.bankName || previous?.bankName || ''), accountNumber: String(input.accountNumber || previous?.accountNumber || ''), accountHolder: String(input.accountHolder || previous?.accountHolder || ''), assignedJobId: String(input.assignedJobId || previous?.assignedJobId || ''), hourlyRate: String(input.hourlyRate || previous?.hourlyRate || '10320'), workType: String(input.workType || previous?.workType || '주간'), socialInsurance: input.socialInsurance && typeof input.socialInsurance === 'object' ? input.socialInsurance : (previous?.socialInsurance || {}), attendanceCalendar: input.attendanceCalendar && typeof input.attendanceCalendar === 'object' ? input.attendanceCalendar : (previous?.attendanceCalendar || {}), updatedAt: new Date().toISOString()
+  };
+}
 
 module.exports = async (req, res) => {
   try {
@@ -11,8 +26,47 @@ module.exports = async (req, res) => {
 
     if (req.method === 'POST') {
       const input = body(req);
-      if (input.action === 'quote-save' || input.action === 'contract-save' || input.action === 'dispatch-contract-save' || input.action === 'assignment-to-save') {
-        const documentType = input.action === 'quote-save' ? 'quote' : input.action === 'dispatch-contract-save' ? 'dispatch-contract' : input.action === 'assignment-to-save' ? 'assignment-to' : 'contract';
+      if (input.action === 'manual-worker-save') {
+        const document = input.document && typeof input.document === 'object' ? input.document : {};
+        const name = String(document.name || '').trim(), clientName = String(document.clientName || '').trim();
+        if (!name || !clientName) return res.status(400).json({ error: '성명과 거래처명을 입력해 주세요.' });
+        const workerData = { name, phone: String(document.phone || ''), address: String(document.address || ''), gender: String(document.gender || ''), birth: String(document.birth || ''), source: 'company-manual' };
+        const workerOperation = updatedOperation({}, { assignmentDate: document.assignmentDate || new Date().toISOString().slice(0, 10), hourlyRate: document.hourlyRate || '10320', workType: document.workType || '주간', assignedJobId: `manual-client:${clientName}`, socialInsurance: document.socialInsurance || {} });
+        const rows = await db.query('INSERT INTO allhands_operation_workers (owner_company_id,client_name,job_title,data,operation) VALUES ($1,$2,$3,$4::jsonb,$5::jsonb) RETURNING id,updated_at', [ownerCompanyId, clientName, String(document.jobTitle || ''), JSON.stringify(workerData), JSON.stringify(workerOperation)]);
+        return res.status(201).json({ ok: true, id: -Number(rows[0].id), updatedAt: rows[0].updated_at });
+      }
+      if (input.action === 'payslip-message-send') {
+        const document = input.document && typeof input.document === 'object' ? input.document : {};
+        const appId = Number(document.applicationId);
+        if (!appId) return res.status(400).json({ error: '대상 인력을 확인해 주세요.' });
+        const people = await db.query(
+          admin
+            ? 'SELECT id,worker_data FROM allhands_job_applications WHERE id=$1'
+            : "SELECT a.id,a.worker_data FROM allhands_job_applications a JOIN allhands_job_posts j ON a.job_id='db-'||j.id::text WHERE a.id=$1 AND j.data->>'ownerCompanyId'=$2",
+          admin ? [appId] : [appId, ownerCompanyId]
+        );
+        const person = people[0], workerId = Number(person?.worker_data?.memberId);
+        if (!person || !Number.isSafeInteger(workerId)) return res.status(400).json({ error: '플랫폼 회원 계정이 연결된 인력에게만 쪽지를 보낼 수 있습니다.' });
+        const workers = await db.query("SELECT data FROM allhands_signup_applications WHERE id=$1 AND kind='worker' AND status='active' LIMIT 1", [workerId]);
+        if (!workers[0]) return res.status(400).json({ error: '수신자의 활성화된 구직자 계정을 찾을 수 없습니다.' });
+        let senderName = 'all hands JOB 관리자';
+        if (company) {
+          const sender = await db.query('SELECT data FROM allhands_signup_applications WHERE id=$1 LIMIT 1', [Number(company.id)]);
+          senderName = String(sender[0]?.data?.companyName || sender[0]?.data?.company || '기업 회원');
+        }
+        const subject = String(document.subject || '').trim().slice(0, 160);
+        const messageBody = String(document.body || '').trim().slice(0, 3000);
+        if (!subject || !messageBody) return res.status(400).json({ error: '명세서 내용이 준비되지 않았습니다.' });
+        const sent = await db.query(
+          'INSERT INTO allhands_messages (sender_kind,sender_id,sender_name,recipient_kind,recipient_id,recipient_name,subject,body,attachments) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9::jsonb) RETURNING id,created_at',
+          [admin ? 'admin' : 'company', admin ? null : Number(company.id), senderName, 'worker', workerId, String(workers[0].data?.name || person.worker_data?.name || '구직자'), subject, messageBody, '[]']
+        );
+        const delivery = { applicationId: appId, month: String(document.month || ''), payDate: String(document.payDate || ''), deliveryMethod: '플랫폼 쪽지', deliveredAt: new Date().toISOString(), messageId: sent[0].id };
+        const saved = await db.query('INSERT INTO allhands_operation_documents (owner_company_id,document_type,data) VALUES ($1,$2,$3::jsonb) RETURNING id,updated_at', [ownerCompanyId, 'payslip-delivery', JSON.stringify(delivery)]);
+        return res.status(201).json({ ok: true, id: saved[0].id, messageId: sent[0].id, updatedAt: saved[0].updated_at });
+      }
+      if (input.action === 'quote-save' || input.action === 'contract-save' || input.action === 'dispatch-contract-save' || input.action === 'assignment-to-save' || input.action === 'invoice-save' || input.action === 'job-client-save' || input.action === 'payroll-calculation-save' || input.action === 'payslip-delivery-save' || input.action === 'certificate-save') {
+        const documentType = input.action === 'quote-save' ? 'quote' : input.action === 'invoice-save' ? 'invoice' : input.action === 'job-client-save' ? 'job-client' : input.action === 'payroll-calculation-save' ? 'payroll-calculation' : input.action === 'payslip-delivery-save' ? 'payslip-delivery' : input.action === 'certificate-save' ? 'certificate' : input.action === 'dispatch-contract-save' ? 'dispatch-contract' : input.action === 'assignment-to-save' ? 'assignment-to' : 'contract';
         const document = input.document && typeof input.document === 'object' ? input.document : {};
         const rows = await db.query(
           'INSERT INTO allhands_operation_documents (owner_company_id,document_type,data) VALUES ($1,$2,$3::jsonb) RETURNING id,updated_at',
@@ -23,6 +77,13 @@ module.exports = async (req, res) => {
 
       const appId = Number(input.applicationId);
       if (!appId) return res.status(400).json({ error: '대상 인력을 확인해 주세요.' });
+      if (appId < 0) {
+        const workerId = Math.abs(appId), workers = await db.query(admin ? 'SELECT data,operation FROM allhands_operation_workers WHERE id=$1' : 'SELECT data,operation FROM allhands_operation_workers WHERE id=$1 AND owner_company_id=$2', admin ? [workerId] : [workerId, ownerCompanyId]);
+        if (!workers[0]) return res.status(404).json({ error: '권한이 없거나 대상 인력이 없습니다.' });
+        const updated = updatedOperation(workers[0].operation || {}, input);
+        await db.query('UPDATE allhands_operation_workers SET operation=$1::jsonb,updated_at=NOW() WHERE id=$2', [JSON.stringify(updated), workerId]);
+        return res.status(200).json({ ok: true });
+      }
       const rows = await db.query(
         admin
           ? 'SELECT employer_note FROM allhands_job_applications WHERE id=$1'
@@ -31,16 +92,7 @@ module.exports = async (req, res) => {
       );
       if (!rows[0]) return res.status(404).json({ error: '권한이 없거나 대상 인력이 없습니다.' });
       const previous = rows[0].employer_note || {};
-      const operation = {
-        attendance: String(input.attendance || ''),
-        workDays: String(input.workDays || ''),
-        workHours: String(input.workHours || ''),
-        dailyRate: String(input.dailyRate || ''),
-        grossPay: String(input.grossPay || ''),
-        netPay: String(input.netPay || ''),
-        payDate: String(input.payDate || ''),
-        updatedAt: new Date().toISOString()
-      };
+      const operation = updatedOperation(previous.operation || {}, input);
       await db.query('UPDATE allhands_job_applications SET employer_note=$1::jsonb WHERE id=$2', [JSON.stringify({ ...previous, operation }), appId]);
       return res.status(200).json({ ok: true });
     }
@@ -58,13 +110,37 @@ module.exports = async (req, res) => {
           : "SELECT a.id,a.job_id,a.job_title,a.worker_data,a.status,a.employer_note FROM allhands_job_applications a JOIN allhands_job_posts j ON a.job_id='db-'||j.id::text WHERE j.data->>'ownerCompanyId'=$1 ORDER BY a.created_at DESC LIMIT 300",
         admin ? [] : [ownerCompanyId]
       );
+      const manualRows = await db.query(admin ? 'SELECT id,client_name,job_title,data,operation FROM allhands_operation_workers ORDER BY updated_at DESC LIMIT 300' : 'SELECT id,client_name,job_title,data,operation FROM allhands_operation_workers WHERE owner_company_id=$1 ORDER BY updated_at DESC LIMIT 300', admin ? [] : [ownerCompanyId]);
+      manualRows.forEach(item => people.push({ id: -Number(item.id), job_id: `manual-client:${item.client_name}`, job_title: item.job_title || '거래처 직원', worker_data: item.data || {}, status: 'accepted', employer_note: { operation: item.operation || {} }, manualClientName: item.client_name, manualWorker: true }));
+      const memberIds = people.map(item => Number(item.worker_data?.memberId)).filter(Number.isSafeInteger);
+      if (memberIds.length) {
+        const workers = await db.query("SELECT id,data FROM allhands_signup_applications WHERE kind='worker' AND id=ANY($1::bigint[])", [memberIds]);
+        const photoByMemberId = new Map(workers.map(worker => [Number(worker.id), String(worker.data?.photoPath || '')]));
+        people.forEach(person => {
+          const memberId = Number(person.worker_data?.memberId);
+          const photoPath = photoByMemberId.get(memberId);
+          if (photoPath) person.worker_data = { ...person.worker_data, photoPath, photoUrl: operationPhotoUrl(photoPath, ownerCompanyId, admin) };
+        });
+      }
       const documents = await db.query(
         admin
           ? 'SELECT id,document_type,data,updated_at FROM allhands_operation_documents ORDER BY updated_at DESC LIMIT 100'
           : 'SELECT id,document_type,data,updated_at FROM allhands_operation_documents WHERE owner_company_id=$1 ORDER BY updated_at DESC LIMIT 100',
         admin ? [] : [ownerCompanyId]
       );
-      return res.status(200).json({ jobs, people, documents, role: admin ? 'admin' : 'company' });
+      const messages = await db.query(
+        admin
+          ? "SELECT id,recipient_id,created_at,read_at FROM allhands_messages WHERE sender_kind='admin' AND sender_id IS NULL ORDER BY created_at DESC LIMIT 300"
+          : "SELECT id,recipient_id,created_at,read_at FROM allhands_messages WHERE sender_kind='company' AND sender_id=$1 ORDER BY created_at DESC LIMIT 300",
+        admin ? [] : [Number(company.id)]
+      );
+      let companyName = '';
+      if (company) {
+        const companyRows = await db.query('SELECT data FROM allhands_signup_applications WHERE id=$1 LIMIT 1', [Number(company.id)]);
+        const companyData = companyRows[0]?.data || {};
+        companyName = String(companyData.companyName || companyData.company || companyData.name || '').trim();
+      }
+      return res.status(200).json({ jobs, people, documents, messages, role: admin ? 'admin' : 'company', companyName });
     }
 
     return res.status(405).json({ error: '허용되지 않은 요청입니다.' });
