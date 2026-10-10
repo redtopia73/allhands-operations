@@ -166,6 +166,8 @@
     window.openFinalListEmail=()=>{const people=selectedFinalApplicants(),email=document.getElementById('finalListEmail')?.value?.trim();if(!people.length)return alert('원청에 제출할 지원자를 먼저 선택해 주세요.');if(!email)return alert('원청사 수신 이메일을 입력해 주세요.');const lines=people.map((person,index)=>{const d=applicantData(person);return `${index+1}. ${personName(person)} / ${applicantAge(person)} / ${d.gender||'성별 미등록'} / ${d.phone||'연락처 미등록'}`});const subject='[올핸즈 JOB] 원청 제출 최종 인력 리스트',body=`안녕하세요.\n\n원청 제출용 최종 인력 리스트를 전달드립니다.\n\n${lines.join('\n')}\n\n첨부: 최종 리스트 및 이력서 묶음 PDF\n\n감사합니다.`;location.href=`mailto:${encodeURIComponent(email)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`};
     const applicantNavigation=window.setView;window.setView=next=>{if(next==='applicants'){applicantNavigation('dashboard');view='applicants';setTimeout(window.renderApplicantManagement,0);return}applicantNavigation(next)};
     const applicantLoad=window.loadData;window.loadData=async()=>{await applicantLoad();if(view==='applicants')window.renderApplicantManagement()};
+    const applicantManagementRenderer=window.renderApplicantManagement;
+    window.renderApplicantManagement=()=>{applicantManagementRenderer();document.querySelectorAll('#sideNav [data-view]').forEach(button=>button.classList.toggle('active',button.dataset.view==='applicants'));};
     loadData();
   </script>
 </body>
