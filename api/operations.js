@@ -20,6 +20,50 @@ module.exports = async (req, res) => {
 
     if (req.method === 'POST') {
       const input = body(req);
+      if (input.action === 'selection-status') {
+        const appId = Number(input.applicationId);
+        const nextStatus = String(input.status || '').trim();
+        if (!appId || !['면접 대상', '면접 합격', '면접 불합격'].includes(nextStatus)) return res.status(400).json({ error: '변경할 면접 결과를 확인해 주세요.' });
+        const rows = await db.query(
+          admin
+            ? 'SELECT id FROM allhands_job_applications WHERE id=$1'
+            : "SELECT a.id FROM allhands_job_applications a JOIN allhands_job_posts j ON a.job_id='db-'||j.id::text WHERE a.id=$1 AND j.data->>'ownerCompanyId'=$2",
+          admin ? [appId] : [appId, ownerCompanyId]
+        );
+        if (!rows[0]) return res.status(404).json({ error: '권한이 없거나 지원자를 찾지 못했습니다.' });
+        await db.query('UPDATE allhands_job_applications SET status=$1 WHERE id=$2', [nextStatus, appId]);
+        return res.status(200).json({ ok: true, message: `${nextStatus}으로 처리했습니다.` });
+      }
+      if (input.action === 'add-interview-candidate') {
+        const sourceId = Number(input.sourceApplicationId);
+        const targetJobId = String(input.targetJobId || '').trim();
+        if (!sourceId || !/^db-\d+$/.test(targetJobId)) return res.status(400).json({ error: '지원자와 대상 공고를 확인해 주세요.' });
+        const sources = await db.query(
+          admin
+            ? 'SELECT id,worker_data FROM allhands_job_applications WHERE id=$1'
+            : "SELECT a.id,a.worker_data FROM allhands_job_applications a JOIN allhands_job_posts j ON a.job_id='db-'||j.id::text WHERE a.id=$1 AND j.data->>'ownerCompanyId'=$2",
+          admin ? [sourceId] : [sourceId, ownerCompanyId]
+        );
+        const source = sources[0];
+        const targetId = Number(targetJobId.slice(3));
+        const targets = await db.query(
+          admin
+            ? "SELECT id,data FROM allhands_job_posts WHERE id=$1 AND status='active'"
+            : "SELECT id,data FROM allhands_job_posts WHERE id=$1 AND status='active' AND data->>'ownerCompanyId'=$2",
+          admin ? [targetId] : [targetId, ownerCompanyId]
+        );
+        const target = targets[0];
+        if (!source || !target) return res.status(404).json({ error: '권한이 없거나 대상 공고를 찾지 못했습니다.' });
+        const memberId = String(source.worker_data?.memberId || '');
+        if (memberId) {
+          const existing = await db.query("SELECT id FROM allhands_job_applications WHERE job_id=$1 AND worker_data->>'memberId'=$2 LIMIT 1", [targetJobId, memberId]);
+          if (existing[0]) return res.status(409).json({ error: '이미 이 공고의 면접 리스트에 등록된 지원자입니다.' });
+        }
+        const jobTitle = String(target.data?.title || target.data?.jobTitle || '채용 공고');
+        const note = { transferredFromApplicationId: sourceId, transferredAt: new Date().toISOString() };
+        const created = await db.query('INSERT INTO allhands_job_applications (job_id,job_title,worker_data,status,employer_note) VALUES ($1,$2,$3::jsonb,$4,$5::jsonb) RETURNING id', [targetJobId, jobTitle, JSON.stringify(source.worker_data || {}), '면접 대상', JSON.stringify(note)]);
+        return res.status(201).json({ ok: true, id: created[0].id, message: '다른 공고의 면접 리스트에 추가했습니다.' });
+      }
       if (input.action === 'interview-schedule') {
         const appId = Number(input.applicationId), interviewAt = String(input.interviewAt || '').trim().slice(0, 80), interviewPlace = String(input.interviewPlace || '').trim().slice(0, 500);
         if (!appId || !interviewAt || !interviewPlace) return res.status(400).json({ error: '면접 일시와 장소를 입력해 주세요.' });
