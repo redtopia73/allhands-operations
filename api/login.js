@@ -11,12 +11,16 @@ module.exports = async (req, res) => {
       const expected = crypto.createHmac('sha256', secret || '').update(payload).digest('base64url');
       if (!secret || !signature || signature.length !== expected.length || !crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expected))) throw new Error('invalid-sso');
       const session = JSON.parse(Buffer.from(payload, 'base64url').toString());
-      if (session.role !== 'company' || !Number.isSafeInteger(session.id) || session.expires <= Date.now()) throw new Error('expired-sso');
-      const db = await ensureTables();
-      const memberships = await db.query("SELECT data FROM allhands_signup_applications WHERE id=$1 AND kind='company' AND status='active' LIMIT 1", [session.id]);
-      if (memberships[0]?.data?.membershipTier !== 'operations') return res.status(403).send('운영관리회원 권한이 필요합니다. 올핸잡 관리자에게 운영관리회원 승인을 요청해 주세요.');
-      const companyPayload = Buffer.from(JSON.stringify({ role:'company', id:session.id, expires:Date.now()+86400000 })).toString('base64url');
-      res.setHeader('Set-Cookie', `allhands_company=${companyPayload}.${sign(companyPayload, process.env.ADMIN_SESSION_SECRET)}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=86400`);
+      if (!['company','admin'].includes(session.role) || session.expires <= Date.now()) throw new Error('expired-sso');
+      if (session.role === 'company') {
+        if (!Number.isSafeInteger(session.id)) throw new Error('expired-sso');
+        const db = await ensureTables();
+        const memberships = await db.query("SELECT data FROM allhands_signup_applications WHERE id=$1 AND kind='company' AND status='active' LIMIT 1", [session.id]);
+        if (memberships[0]?.data?.membershipTier !== 'operations') return res.status(403).send('운영관리회원 권한이 필요합니다. 올핸잡 관리자에게 운영관리회원 승인을 요청해 주세요.');
+      }
+      const cookieName = session.role === 'admin' ? 'allhands_admin' : 'allhands_company';
+      const targetPayload = Buffer.from(JSON.stringify(session.role === 'admin' ? { role:'admin', expires:Date.now()+28800000 } : { role:'company', id:session.id, expires:Date.now()+86400000 })).toString('base64url');
+      res.setHeader('Set-Cookie', `${cookieName}=${targetPayload}.${sign(targetPayload, process.env.ADMIN_SESSION_SECRET)}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=${session.role === 'admin' ? 28800 : 86400}`);
       res.setHeader('Location', '/');
       return res.status(302).end();
     } catch {
