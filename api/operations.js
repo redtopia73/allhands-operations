@@ -20,6 +20,34 @@ module.exports = async (req, res) => {
 
     if (req.method === 'POST') {
       const input = body(req);
+      if (input.action === 'interview-schedule') {
+        const appId = Number(input.applicationId), interviewAt = String(input.interviewAt || '').trim().slice(0, 80), interviewPlace = String(input.interviewPlace || '').trim().slice(0, 500);
+        if (!appId || !interviewAt || !interviewPlace) return res.status(400).json({ error: '면접 일시와 장소를 입력해 주세요.' });
+        const rows = await db.query(
+          admin
+            ? 'SELECT id,job_title,worker_data,employer_note FROM allhands_job_applications WHERE id=$1'
+            : "SELECT a.id,a.job_title,a.worker_data,a.employer_note FROM allhands_job_applications a JOIN allhands_job_posts j ON a.job_id='db-'||j.id::text WHERE a.id=$1 AND j.data->>'ownerCompanyId'=$2",
+          admin ? [appId] : [appId, ownerCompanyId]
+        );
+        const application = rows[0], workerId = Number(application?.worker_data?.memberId);
+        if (!application) return res.status(404).json({ error: '권한이 없거나 지원자를 찾지 못했습니다.' });
+        const interview = { interviewAt, interviewPlace, requestedAt: new Date().toISOString(), resumeRequested: true };
+        const note = { ...(application.employer_note || {}), interview, resumeRequested: true };
+        await db.query("UPDATE allhands_job_applications SET status='면접 일정 안내',employer_note=$1::jsonb WHERE id=$2", [JSON.stringify(note), appId]);
+        if (Number.isSafeInteger(workerId)) {
+          const workers = await db.query("SELECT data FROM allhands_signup_applications WHERE id=$1 AND kind='worker' AND status='active' LIMIT 1", [workerId]);
+          if (workers[0]) {
+            let senderName = 'all hands JOB 관리자';
+            if (company) {
+              const sender = await db.query('SELECT data FROM allhands_signup_applications WHERE id=$1 LIMIT 1', [Number(company.id)]);
+              senderName = String(sender[0]?.data?.companyName || sender[0]?.data?.company || '기업 회원');
+            }
+            const message = `[면접 일정 안내]\n\n공고: ${application.job_title}\n일시: ${interviewAt}\n장소·방식: ${interviewPlace}\n\n면접 전 간편 이력서를 작성해 추가 제출해 주세요. 내 정보 메뉴의 이력서 작성에서 작성할 수 있습니다.`;
+            await db.query('INSERT INTO allhands_messages (sender_kind,sender_id,sender_name,recipient_kind,recipient_id,recipient_name,subject,body,attachments) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9::jsonb)', [admin ? 'admin' : 'company', admin ? null : Number(company.id), senderName, 'worker', workerId, String(workers[0].data?.name || application.worker_data?.name || '구직자'), `[${application.job_title}] 면접 일정 및 이력서 요청`, message, '[]']);
+          }
+        }
+        return res.status(200).json({ ok: true, message: '면접 일정과 간편 이력서 제출 요청을 전달했습니다.' });
+      }
       if (input.action === 'payslip-message-send') {
         const document = input.document && typeof input.document === 'object' ? input.document : {};
         const appId = Number(document.applicationId);
