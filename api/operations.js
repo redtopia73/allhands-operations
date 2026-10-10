@@ -17,6 +17,10 @@ module.exports = async (req, res) => {
 
     const db = await ensureTables();
     const ownerCompanyId = company ? String(company.id) : null;
+    if (company) {
+      const memberships = await db.query("SELECT data FROM allhands_signup_applications WHERE id=$1 AND kind='company' AND status='active' LIMIT 1", [Number(company.id)]);
+      if (memberships[0]?.data?.membershipTier !== 'operations') return res.status(403).json({ error: '운영관리회원 권한이 필요합니다. 올핸잡 관리자에게 운영관리회원 승인을 요청해 주세요.' });
+    }
 
     if (req.method === 'POST') {
       const input = body(req);

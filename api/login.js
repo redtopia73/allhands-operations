@@ -12,6 +12,9 @@ module.exports = async (req, res) => {
       if (!secret || !signature || signature.length !== expected.length || !crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expected))) throw new Error('invalid-sso');
       const session = JSON.parse(Buffer.from(payload, 'base64url').toString());
       if (session.role !== 'company' || !Number.isSafeInteger(session.id) || session.expires <= Date.now()) throw new Error('expired-sso');
+      const db = await ensureTables();
+      const memberships = await db.query("SELECT data FROM allhands_signup_applications WHERE id=$1 AND kind='company' AND status='active' LIMIT 1", [session.id]);
+      if (memberships[0]?.data?.membershipTier !== 'operations') return res.status(403).send('운영관리회원 권한이 필요합니다. 올핸잡 관리자에게 운영관리회원 승인을 요청해 주세요.');
       const companyPayload = Buffer.from(JSON.stringify({ role:'company', id:session.id, expires:Date.now()+86400000 })).toString('base64url');
       res.setHeader('Set-Cookie', `allhands_company=${companyPayload}.${sign(companyPayload, process.env.ADMIN_SESSION_SECRET)}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=86400`);
       res.setHeader('Location', '/');
@@ -35,7 +38,7 @@ module.exports = async (req, res) => {
     const id = clean(input.id), password = String(input.password || '');
     if (!id || !password) return res.status(400).json({ error: '기업 이메일 또는 사업자번호와 비밀번호를 입력해 주세요.' });
     const db = await ensureTables();
-    const rows = await db.query("SELECT id, data FROM allhands_signup_applications WHERE kind='company' AND status='active' AND (lower(data->>'companyEmail')=lower($1) OR data->>'businessNumber'=$1 OR data->>'companyPhone'=$1) LIMIT 1", [id]);
+    const rows = await db.query("SELECT id, data FROM allhands_signup_applications WHERE kind='company' AND status='active' AND data->>'membershipTier'='operations' AND (lower(data->>'companyEmail')=lower($1) OR data->>'businessNumber'=$1 OR data->>'companyPhone'=$1) LIMIT 1", [id]);
     const row = rows[0], hash = crypto.createHash('sha256').update(password).digest('hex');
     if (!row || row.data.passwordHash !== hash) return res.status(401).json({ error: '기업 이메일·사업자번호 또는 비밀번호가 올바르지 않습니다.' });
     const payload = Buffer.from(JSON.stringify({ role: 'company', id: Number(row.id), expires: Date.now() + 86400000 })).toString('base64url');
