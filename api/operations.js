@@ -24,6 +24,71 @@ module.exports = async (req, res) => {
 
     if (req.method === 'POST') {
       const input = body(req);
+      if (input.action === 'workflow-notify') {
+        const appId = Number(input.applicationId);
+        const step = String(input.step || '').trim();
+        const steps = ['resume_request', 'interview_notice', 'start_notice'];
+        if (!appId || !steps.includes(step)) return res.status(400).json({ error: '진행할 단계를 확인해 주세요.' });
+
+        const rows = await db.query(
+          admin
+            ? 'SELECT id,job_title,worker_data,status,employer_note FROM allhands_job_applications WHERE id=$1'
+            : "SELECT a.id,a.job_title,a.worker_data,a.status,a.employer_note FROM allhands_job_applications a JOIN allhands_job_posts j ON a.job_id='db-'||j.id::text WHERE a.id=$1 AND j.data->>'ownerCompanyId'=$2",
+          admin ? [appId] : [appId, ownerCompanyId]
+        );
+        const application = rows[0];
+        if (!application) return res.status(404).json({ error: '권한이 없거나 지원자를 찾지 못했습니다.' });
+
+        const previous = application.employer_note || {};
+        const legacyStatus = String(application.status || '');
+        const current = ['resume_request', 'interview_notice', 'start_notice'].includes(previous.workflowStage)
+          ? previous.workflowStage
+          : (/입사일|합격/.test(legacyStatus) ? 'start_notice' : (/면접 일정|면접일 통보/.test(legacyStatus) ? 'interview_notice' : (/면접|이력서 요청/.test(legacyStatus) ? 'resume_request' : 'application')));
+        const required = { resume_request: 'application', interview_notice: 'resume_request', start_notice: 'interview_notice' };
+        if (current !== required[step]) return res.status(400).json({ error: '이전 단계를 먼저 처리해 주세요.' });
+
+        const interviewAt = String(input.interviewAt || '').trim().slice(0, 80);
+        const interviewPlace = String(input.interviewPlace || '').trim().slice(0, 500);
+        const startDate = String(input.startDate || '').trim().slice(0, 30);
+        if (step === 'interview_notice' && (!interviewAt || !interviewPlace)) return res.status(400).json({ error: '면접 일시와 장소를 입력해 주세요.' });
+        if (step === 'start_notice' && !startDate) return res.status(400).json({ error: '입사일을 입력해 주세요.' });
+
+        const now = new Date().toISOString();
+        const labels = { resume_request: '이력서 요청', interview_notice: '면접일 통보', start_notice: '입사일 통보' };
+        const history = Array.isArray(previous.workflowHistory) ? previous.workflowHistory : [];
+        const interview = step === 'interview_notice'
+          ? { ...(previous.interview || {}), interviewAt, interviewPlace, requestedAt: now, resumeRequested: true }
+          : (previous.interview || {});
+        const note = {
+          ...previous,
+          workflowStage: step,
+          workflowHistory: [...history, { step, label: labels[step], sentAt: now, interviewAt: step === 'interview_notice' ? interviewAt : undefined, startDate: step === 'start_notice' ? startDate : undefined }],
+          interview,
+          resumeRequested: step !== 'resume_request' ? previous.resumeRequested : true,
+          startDate: step === 'start_notice' ? startDate : previous.startDate
+        };
+        const status = step === 'start_notice' ? '입사일 통보 · 합격' : labels[step];
+        await db.query('UPDATE allhands_job_applications SET status=$1,employer_note=$2::jsonb WHERE id=$3', [status, JSON.stringify(note), appId]);
+
+        const workerId = Number(application.worker_data?.memberId);
+        if (Number.isSafeInteger(workerId)) {
+          const workers = await db.query("SELECT data FROM allhands_signup_applications WHERE id=$1 AND kind='worker' AND status='active' LIMIT 1", [workerId]);
+          if (workers[0]) {
+            let senderName = 'all hands JOB 관리자';
+            if (company) {
+              const sender = await db.query('SELECT data FROM allhands_signup_applications WHERE id=$1 LIMIT 1', [Number(company.id)]);
+              senderName = String(sender[0]?.data?.companyName || sender[0]?.data?.company || '기업 회원');
+            }
+            const messages = {
+              resume_request: `[이력서 제출 요청]\n\n공고: ${application.job_title}\n\n면접 진행을 위해 간편 이력서를 작성해 제출해 주세요. 내 정보 메뉴의 이력서 작성에서 작성할 수 있습니다.`,
+              interview_notice: `[면접 일정 안내]\n\n공고: ${application.job_title}\n일시: ${interviewAt}\n장소·방식: ${interviewPlace}\n\n면접 일정이 확정되었습니다.`,
+              start_notice: `[입사일 안내]\n\n공고: ${application.job_title}\n입사일: ${startDate}\n\n입사 일정과 준비사항을 확인해 주세요.`
+            };
+            await db.query('INSERT INTO allhands_messages (sender_kind,sender_id,sender_name,recipient_kind,recipient_id,recipient_name,subject,body,attachments) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9::jsonb)', [admin ? 'admin' : 'company', admin ? null : Number(company.id), senderName, 'worker', workerId, String(workers[0].data?.name || application.worker_data?.name || '구직자'), `[${application.job_title}] ${labels[step]}`, messages[step], '[]']);
+          }
+        }
+        return res.status(200).json({ ok: true, message: `${labels[step]}을(를) 전달했습니다.` });
+      }
       if (input.action === 'selection-status') {
         const appId = Number(input.applicationId);
         const nextStatus = String(input.status || '').trim();
@@ -64,8 +129,8 @@ module.exports = async (req, res) => {
           if (existing[0]) return res.status(409).json({ error: '이미 이 공고의 면접 리스트에 등록된 지원자입니다.' });
         }
         const jobTitle = String(target.data?.title || target.data?.jobTitle || '채용 공고');
-        const note = { transferredFromApplicationId: sourceId, transferredAt: new Date().toISOString() };
-        const created = await db.query('INSERT INTO allhands_job_applications (job_id,job_title,worker_data,status,employer_note) VALUES ($1,$2,$3::jsonb,$4,$5::jsonb) RETURNING id', [targetJobId, jobTitle, JSON.stringify(source.worker_data || {}), '면접 대상', JSON.stringify(note)]);
+        const note = { transferredFromApplicationId: sourceId, transferredAt: new Date().toISOString(), workflowStage: 'resume_request', workflowHistory: [{ step: 'resume_request', label: '이력서 요청', sentAt: new Date().toISOString() }] };
+        const created = await db.query('INSERT INTO allhands_job_applications (job_id,job_title,worker_data,status,employer_note) VALUES ($1,$2,$3::jsonb,$4,$5::jsonb) RETURNING id', [targetJobId, jobTitle, JSON.stringify(source.worker_data || {}), '이력서 요청', JSON.stringify(note)]);
         return res.status(201).json({ ok: true, id: created[0].id, message: '다른 공고의 면접 리스트에 추가했습니다.' });
       }
       if (input.action === 'interview-schedule') {
