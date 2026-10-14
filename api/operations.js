@@ -281,6 +281,15 @@ module.exports = async (req, res) => {
         const saved = await db.query('INSERT INTO allhands_operation_documents (owner_company_id,document_type,data) VALUES ($1,$2,$3::jsonb) RETURNING id,updated_at', [ownerCompanyId, 'system-inquiry', JSON.stringify(inquiry)]);
         return res.status(201).json({ ok: true, id: saved[0].id, messageId: sent[0].id, updatedAt: saved[0].updated_at });
       }
+      if (input.action === 'employment-contract-request') {
+        const applicationId = Number(input.applicationId);
+        if (!applicationId || !input.contract || typeof input.contract !== 'object') return res.status(400).json({ error: '근로자와 계약 조건을 확인해 주세요.' });
+        const people = await db.query(admin ? 'SELECT id,worker_data,job_title FROM allhands_job_applications WHERE id=$1' : "SELECT a.id,a.worker_data,a.job_title FROM allhands_job_applications a JOIN allhands_job_posts j ON a.job_id='db-'||j.id::text WHERE a.id=$1 AND j.data->>'ownerCompanyId'=$2", admin ? [applicationId] : [applicationId, ownerCompanyId]);
+        if (!people[0]) return res.status(404).json({ error: '계약 요청 대상을 찾지 못했습니다.' });
+        const person = people[0], contract = { ...input.contract, applicationId, workerId: String(person.worker_data?.memberId || ''), workerName: String(person.worker_data?.name || ''), jobTitle: person.job_title, status: '서명 요청', requestedAt: new Date().toISOString() };
+        const saved = await db.query('INSERT INTO allhands_operation_documents (owner_company_id,document_type,data) VALUES ($1,$2,$3::jsonb) RETURNING id', [ownerCompanyId || '', 'employment-contract', JSON.stringify(contract)]);
+        return res.status(201).json({ ok: true, id: saved[0].id, message: '표준근로계약서 서명 요청을 보냈습니다.' });
+      }
       if (input.action === 'approval-process') {
         const documentId = Number(input.documentId);
         const status = String(input.status || '');
