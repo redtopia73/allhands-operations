@@ -22,7 +22,8 @@ module.exports = async (req, res) => {
       const cookieName = session.role === 'admin' ? 'allhands_admin' : session.role === 'company' ? 'allhands_company' : 'allhands_worker';
       const targetPayload = Buffer.from(JSON.stringify(session.role === 'admin' ? { role:'admin', expires:Date.now()+28800000 } : { role:session.role, id:session.id, expires:Date.now()+(session.role==='worker'?2592000000:86400000) })).toString('base64url');
       const maxAge=session.role === 'admin' ? 28800 : session.role === 'worker' ? 2592000 : 86400;
-      res.setHeader('Set-Cookie', `${cookieName}=${targetPayload}.${sign(targetPayload, process.env.ADMIN_SESSION_SECRET)}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=${maxAge}`);
+      const sessionCookie=`${cookieName}=${targetPayload}.${sign(targetPayload, process.env.ADMIN_SESSION_SECRET)}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=${maxAge}`;
+      res.setHeader('Set-Cookie', session.role === 'worker' ? ['allhands_admin=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0','allhands_company=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0',sessionCookie] : sessionCookie);
       res.setHeader('Location', session.role === 'worker' ? '/worker.html' : '/');
       return res.status(302).end();
     } catch {
