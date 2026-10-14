@@ -281,6 +281,16 @@ module.exports = async (req, res) => {
         const saved = await db.query('INSERT INTO allhands_operation_documents (owner_company_id,document_type,data) VALUES ($1,$2,$3::jsonb) RETURNING id,updated_at', [ownerCompanyId, 'system-inquiry', JSON.stringify(inquiry)]);
         return res.status(201).json({ ok: true, id: saved[0].id, messageId: sent[0].id, updatedAt: saved[0].updated_at });
       }
+      if (input.action === 'approval-process') {
+        const documentId = Number(input.documentId);
+        const status = String(input.status || '');
+        if (!documentId || !['승인','반려'].includes(status)) return res.status(400).json({ error: '결재 상태를 확인해 주세요.' });
+        const documents = await db.query(admin ? "SELECT id,data FROM allhands_operation_documents WHERE id=$1 AND document_type IN ('worker-certificate-request','worker-attendance-request')" : "SELECT id,data FROM allhands_operation_documents WHERE id=$1 AND owner_company_id=$2 AND document_type IN ('worker-certificate-request','worker-attendance-request')", admin ? [documentId] : [documentId, ownerCompanyId]);
+        if (!documents[0]) return res.status(404).json({ error: '결재 대상을 찾지 못했습니다.' });
+        const next = { ...(documents[0].data || {}), status, decidedAt: new Date().toISOString() };
+        await db.query('UPDATE allhands_operation_documents SET data=$1::jsonb,updated_at=NOW() WHERE id=$2', [JSON.stringify(next), documentId]);
+        return res.status(200).json({ ok: true, message: `${status} 처리했습니다.` });
+      }
       if (input.action === 'quote-save' || input.action === 'contract-save' || input.action === 'dispatch-contract-save' || input.action === 'assignment-to-save' || input.action === 'invoice-save' || input.action === 'job-client-save' || input.action === 'payroll-calculation-save' || input.action === 'payslip-delivery-save' || input.action === 'worker-notice-save') {
         const documentType = input.action === 'quote-save' ? 'quote' : input.action === 'invoice-save' ? 'invoice' : input.action === 'job-client-save' ? 'job-client' : input.action === 'payroll-calculation-save' ? 'payroll-calculation' : input.action === 'payslip-delivery-save' ? 'payslip-delivery' : input.action === 'worker-notice-save' ? 'worker-notice' : input.action === 'dispatch-contract-save' ? 'dispatch-contract' : input.action === 'assignment-to-save' ? 'assignment-to' : 'contract';
         const document = input.document && typeof input.document === 'object' ? input.document : {};
