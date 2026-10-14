@@ -320,6 +320,10 @@ module.exports = async (req, res) => {
         workType: String(input.workType || previous.operation?.workType || '주간'),
         socialInsurance: input.socialInsurance && typeof input.socialInsurance === 'object' ? input.socialInsurance : (previous.operation?.socialInsurance || {}),
         attendanceCalendar: input.attendanceCalendar && typeof input.attendanceCalendar === 'object' ? input.attendanceCalendar : (previous.operation?.attendanceCalendar || {}),
+        payrollConfirmed: typeof input.payrollConfirmed === 'boolean' ? input.payrollConfirmed : Boolean(previous.operation?.payrollConfirmed),
+        payrollConfirmedMonth: String(input.payrollConfirmedMonth || previous.operation?.payrollConfirmedMonth || '').slice(0, 7),
+        payrollConfirmedAt: String(input.payrollConfirmedAt || previous.operation?.payrollConfirmedAt || '').slice(0, 40),
+        payrollSummary: input.payrollSummary && typeof input.payrollSummary === 'object' ? input.payrollSummary : (previous.operation?.payrollSummary || {}),
         updatedAt: new Date().toISOString()
       };
       await db.query('UPDATE allhands_job_applications SET employer_note=$1::jsonb WHERE id=$2', [JSON.stringify({ ...previous, operation }), appId]);
