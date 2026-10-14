@@ -281,9 +281,10 @@ module.exports = async (req, res) => {
         const saved = await db.query('INSERT INTO allhands_operation_documents (owner_company_id,document_type,data) VALUES ($1,$2,$3::jsonb) RETURNING id,updated_at', [ownerCompanyId, 'system-inquiry', JSON.stringify(inquiry)]);
         return res.status(201).json({ ok: true, id: saved[0].id, messageId: sent[0].id, updatedAt: saved[0].updated_at });
       }
-      if (input.action === 'quote-save' || input.action === 'contract-save' || input.action === 'dispatch-contract-save' || input.action === 'assignment-to-save' || input.action === 'invoice-save' || input.action === 'job-client-save' || input.action === 'payroll-calculation-save' || input.action === 'payslip-delivery-save') {
-        const documentType = input.action === 'quote-save' ? 'quote' : input.action === 'invoice-save' ? 'invoice' : input.action === 'job-client-save' ? 'job-client' : input.action === 'payroll-calculation-save' ? 'payroll-calculation' : input.action === 'payslip-delivery-save' ? 'payslip-delivery' : input.action === 'dispatch-contract-save' ? 'dispatch-contract' : input.action === 'assignment-to-save' ? 'assignment-to' : 'contract';
+      if (input.action === 'quote-save' || input.action === 'contract-save' || input.action === 'dispatch-contract-save' || input.action === 'assignment-to-save' || input.action === 'invoice-save' || input.action === 'job-client-save' || input.action === 'payroll-calculation-save' || input.action === 'payslip-delivery-save' || input.action === 'worker-notice-save') {
+        const documentType = input.action === 'quote-save' ? 'quote' : input.action === 'invoice-save' ? 'invoice' : input.action === 'job-client-save' ? 'job-client' : input.action === 'payroll-calculation-save' ? 'payroll-calculation' : input.action === 'payslip-delivery-save' ? 'payslip-delivery' : input.action === 'worker-notice-save' ? 'worker-notice' : input.action === 'dispatch-contract-save' ? 'dispatch-contract' : input.action === 'assignment-to-save' ? 'assignment-to' : 'contract';
         const document = input.document && typeof input.document === 'object' ? input.document : {};
+        if (documentType === 'worker-notice' && ownerCompanyId) document.companyId = ownerCompanyId;
         const rows = await db.query(
           'INSERT INTO allhands_operation_documents (owner_company_id,document_type,data) VALUES ($1,$2,$3::jsonb) RETURNING id,updated_at',
           [ownerCompanyId, documentType, JSON.stringify(document)]
