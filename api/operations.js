@@ -89,6 +89,41 @@ module.exports = async (req, res) => {
         }
         return res.status(200).json({ ok: true, message: `${labels[step]}을(를) 전달했습니다.` });
       }
+      if (input.action === 'workflow-outcome') {
+        const appId = Number(input.applicationId);
+        const outcome = String(input.outcome || '').trim();
+        const labels = { document_rejected: '서류 불합격', interview_rejected: '면접 불합격', interview_no_show: '면접 노쇼', start_attended: '첫 출근 완료', start_no_show: '입사 당일 미출근', resigned: '퇴사 처리' };
+        if (!appId || !labels[outcome]) return res.status(400).json({ error: '처리할 결과를 확인해 주세요.' });
+        const rows = await db.query(
+          admin
+            ? 'SELECT id,status,employer_note FROM allhands_job_applications WHERE id=$1'
+            : "SELECT a.id,a.status,a.employer_note FROM allhands_job_applications a JOIN allhands_job_posts j ON a.job_id='db-'||j.id::text WHERE a.id=$1 AND j.data->>'ownerCompanyId'=$2",
+          admin ? [appId] : [appId, ownerCompanyId]
+        );
+        const application = rows[0];
+        if (!application) return res.status(404).json({ error: '권한이 없거나 지원자를 찾지 못했습니다.' });
+        const previous = application.employer_note || {};
+        const currentStage = String(previous.workflowStage || (/입사일|합격/.test(application.status || '') ? 'start_notice' : (/면접 일정|면접일 통보/.test(application.status || '') ? 'interview_notice' : (/면접|이력서 요청/.test(application.status || '') ? 'resume_request' : 'application'))));
+        const allowed = {
+          document_rejected: ['application', 'resume_request'],
+          interview_rejected: ['interview_notice'],
+          interview_no_show: ['interview_notice'],
+          start_attended: ['start_notice'],
+          start_no_show: ['start_notice'],
+          resigned: ['start_notice']
+        };
+        if (!allowed[outcome].includes(currentStage) || (outcome === 'resigned' && !previous.attendanceStartedAt)) return res.status(400).json({ error: '현재 진행 단계에서는 이 처리를 할 수 없습니다.' });
+        const history = Array.isArray(previous.workflowHistory) ? previous.workflowHistory : [];
+        const now = new Date().toISOString();
+        const operation = { ...(previous.operation || {}) };
+        if (outcome === 'start_attended') operation.assignmentDate = String(input.date || now.slice(0, 10)).slice(0, 10);
+        if (outcome === 'resigned') operation.resignationDate = String(input.date || now.slice(0, 10)).slice(0, 10);
+        const terminal = !['start_attended'].includes(outcome);
+        const note = { ...previous, operation, workflowStage: terminal ? 'closed' : 'start_notice', outcome: terminal ? { code: outcome, label: labels[outcome], handledAt: now } : previous.outcome, attendanceStartedAt: outcome === 'start_attended' ? now : previous.attendanceStartedAt, workflowHistory: [...history, { step: outcome, label: labels[outcome], sentAt: now }] };
+        const status = outcome === 'start_attended' ? '입사일 통보 · 합격' : outcome === 'resigned' ? '입사일 통보 · 합격 · 퇴사' : labels[outcome];
+        await db.query('UPDATE allhands_job_applications SET status=$1,employer_note=$2::jsonb WHERE id=$3', [status, JSON.stringify(note), appId]);
+        return res.status(200).json({ ok: true, message: `${labels[outcome]} 처리를 완료했습니다.` });
+      }
       if (input.action === 'selection-status') {
         const appId = Number(input.applicationId);
         const nextStatus = String(input.status || '').trim();
@@ -300,8 +335,8 @@ module.exports = async (req, res) => {
       );
       const people = await db.query(
         admin
-          ? 'SELECT id,job_id,job_title,worker_data,status,employer_note FROM allhands_job_applications ORDER BY created_at DESC LIMIT 300'
-          : "SELECT a.id,a.job_id,a.job_title,a.worker_data,a.status,a.employer_note FROM allhands_job_applications a JOIN allhands_job_posts j ON a.job_id='db-'||j.id::text WHERE j.data->>'ownerCompanyId'=$1 ORDER BY a.created_at DESC LIMIT 300",
+          ? 'SELECT id,job_id,job_title,worker_data,status,employer_note,created_at FROM allhands_job_applications ORDER BY created_at DESC LIMIT 300'
+          : "SELECT a.id,a.job_id,a.job_title,a.worker_data,a.status,a.employer_note,a.created_at FROM allhands_job_applications a JOIN allhands_job_posts j ON a.job_id='db-'||j.id::text WHERE j.data->>'ownerCompanyId'=$1 ORDER BY a.created_at DESC LIMIT 300",
         admin ? [] : [ownerCompanyId]
       );
       const memberIds = people.map(item => Number(item.worker_data?.memberId)).filter(Number.isSafeInteger);
