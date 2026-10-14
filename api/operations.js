@@ -228,6 +228,24 @@ module.exports = async (req, res) => {
         const saved = await db.query('INSERT INTO allhands_operation_documents (owner_company_id,document_type,data) VALUES ($1,$2,$3::jsonb) RETURNING id,updated_at', [ownerCompanyId, 'payslip-delivery', JSON.stringify(delivery)]);
         return res.status(201).json({ ok: true, id: saved[0].id, messageId: sent[0].id, updatedAt: saved[0].updated_at });
       }
+      if (input.action === 'system-inquiry') {
+        const category = String(input.category || '').trim();
+        const subject = String(input.subject || '').trim().slice(0, 160);
+        const messageBody = String(input.body || '').trim().slice(0, 3000);
+        if (!['오류 신고', '개선 제안', '기타 문의'].includes(category) || !subject || !messageBody) return res.status(400).json({ error: '문의 유형, 제목, 내용을 모두 입력해 주세요.' });
+        let senderName = '올핸잡 운영관리자';
+        if (company) {
+          const senders = await db.query('SELECT data FROM allhands_signup_applications WHERE id=$1 LIMIT 1', [Number(company.id)]);
+          senderName = String(senders[0]?.data?.companyName || senders[0]?.data?.company || senders[0]?.data?.name || '운영관리 회원');
+        }
+        const sent = await db.query(
+          'INSERT INTO allhands_messages (sender_kind,sender_id,sender_name,recipient_kind,recipient_id,recipient_name,subject,body,attachments) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9::jsonb) RETURNING id,created_at',
+          [admin ? 'admin' : 'company', admin ? null : Number(company.id), senderName, 'admin', null, '올핸잡 관리자', `[시스템 문의 · ${category}] ${subject}`, messageBody, '[]']
+        );
+        const inquiry = { category, subject, body: messageBody, messageId: sent[0].id, submittedAt: sent[0].created_at, status: '접수 완료' };
+        const saved = await db.query('INSERT INTO allhands_operation_documents (owner_company_id,document_type,data) VALUES ($1,$2,$3::jsonb) RETURNING id,updated_at', [ownerCompanyId, 'system-inquiry', JSON.stringify(inquiry)]);
+        return res.status(201).json({ ok: true, id: saved[0].id, messageId: sent[0].id, updatedAt: saved[0].updated_at });
+      }
       if (input.action === 'quote-save' || input.action === 'contract-save' || input.action === 'dispatch-contract-save' || input.action === 'assignment-to-save' || input.action === 'invoice-save' || input.action === 'job-client-save' || input.action === 'payroll-calculation-save' || input.action === 'payslip-delivery-save') {
         const documentType = input.action === 'quote-save' ? 'quote' : input.action === 'invoice-save' ? 'invoice' : input.action === 'job-client-save' ? 'job-client' : input.action === 'payroll-calculation-save' ? 'payroll-calculation' : input.action === 'payslip-delivery-save' ? 'payslip-delivery' : input.action === 'dispatch-contract-save' ? 'dispatch-contract' : input.action === 'assignment-to-save' ? 'assignment-to' : 'contract';
         const document = input.document && typeof input.document === 'object' ? input.document : {};
