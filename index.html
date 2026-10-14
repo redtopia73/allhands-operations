@@ -291,6 +291,9 @@
     window.processApproval=async(id,status)=>{try{const response=await fetch('/api/operations',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'approval-process',documentId:id,status})}),out=await response.json();if(!response.ok)throw new Error(out.error||'결재 처리에 실패했습니다.');alert(out.message);renderApprovals()}catch(error){alert(error.message)}};
     window.refreshApprovalBadge=async()=>{try{const out=await fetch('/api/operations').then(response=>response.json()),count=(out.documents||[]).filter(doc=>['worker-certificate-request','worker-attendance-request'].includes(doc.document_type)&&(!doc.data?.status||doc.data.status==='결재 대기')).length;approvalMenuButton.innerHTML=`전자결재${count?`<span class="approval-new">NEW ${count}</span>`:''}`}catch{}};window.refreshApprovalBadge();
     const approvalNavigation=window.setView;window.setView=next=>{if(next==='approvals'){approvalNavigation('dashboard');setTimeout(renderApprovals,0);return}approvalNavigation(next)};
+    workerNoticeButton.textContent='공지사항 관리';
+    const scopedWorkerNoticeRenderer=window.renderWorkerNotices;
+    window.renderWorkerNotices=async()=>{await scopedWorkerNoticeRenderer();const main=$('#app');if(!main)return;const adminNotice=role==='admin',heading=main.querySelector('.heading'),formTitle=main.querySelector('.panel h2'),description=heading?.querySelector('p');if(heading?.querySelector('h1'))heading.querySelector('h1').textContent=adminNotice?'전체 공지사항':'기업 공지사항';if(description)description.textContent=adminNotice?'관리자가 등록한 공지는 운영관리 사용 업체에 배치된 모든 개인회원에게 전달됩니다.':'등록한 공지는 내 기업에 배치된 개인회원에게만 전달됩니다.';if(formTitle)formTitle.textContent=adminNotice?'전체 공지 등록':'소속직원 공지 등록';const submit=main.querySelector('form button.primary');if(submit)submit.textContent=adminNotice?'전체 공지 등록':'공지 등록'};
     loadData();
   </script>
 </body>
