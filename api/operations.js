@@ -336,6 +336,7 @@ module.exports = async (req, res) => {
         assignmentDate: String(input.assignmentDate || previous.operation?.assignmentDate || ''),
         resignationDate: String(input.resignationDate || previous.operation?.resignationDate || ''),
         bankName: String(input.bankName || previous.operation?.bankName || ''),
+        bankCode: String(input.bankCode || previous.operation?.bankCode || ''),
         accountNumber: String(input.accountNumber || previous.operation?.accountNumber || ''),
         accountHolder: String(input.accountHolder || previous.operation?.accountHolder || ''),
         assignedJobId: String(input.assignedJobId || previous.operation?.assignedJobId || ''),
