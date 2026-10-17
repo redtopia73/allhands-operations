@@ -395,7 +395,7 @@
     const statusText = { pending: '검토 대기', opened: '열람 완료', approved: '승인 완료', rejected: '반려', 'revision-requested': '수정 요청' };
     const panel = document.createElement('section');
     panel.id = 'externalApprovalPanel'; panel.className = 'external-approval';
-    panel.innerHTML = `<h3>거래처 검토 요청</h3><p class="muted">저장한 청구서에 로그인 없는 일회용 검토 링크를 만듭니다. 링크는 7일 동안 유효하며, 열람·승인·반려·수정 요청 기록이 운영시스템에 남습니다.</p><div class="approval-fields"><label>검토 담당자 성함<input id="externalApprovalRecipient" placeholder="예: 홍길동"></label><label>검토 담당자 이메일<input id="externalApprovalEmail" type="email" placeholder="example@company.com"></label></div><div class="approval-link"><button class="secondary" onclick="createInvoiceApprovalLink()">검토 링크 만들기</button></div><div id="externalApprovalResult"></div>${records.map(item => `<div class="approval-record"><b>${statusText[item.status] || item.status}</b> · ${item.recipient_name} (${item.recipient_email}) · ${String(item.created_at || '').slice(0,10)}${item.responded_at ? ' · 회신 '+String(item.responded_at).slice(0,10) : ''}</div>`).join('')}`;
+    panel.innerHTML = `<h3>거래처 검토 요청</h3><p class="muted">저장한 청구서를 고객사에 이메일로 보내고, 로그인 없는 검토 링크에서 승인·반려·수정 요청 이력을 관리합니다.</p><div class="approval-fields"><label>검토 담당자 성함<input id="externalApprovalRecipient" placeholder="예: 홍길동"></label><label>검토 담당자 이메일<input id="externalApprovalEmail" type="email" placeholder="example@company.com"></label></div><div class="approval-link"><button class="secondary" onclick="openRecipientInvoicePreview()">고객사 미리보기</button><button class="primary" onclick="createInvoiceApprovalLink()">고객사 메일 보내기</button></div><div id="externalApprovalResult"></div>${records.map(item => `<div class="approval-record"><b>${statusText[item.status] || item.status}</b> · ${item.recipient_name} (${item.recipient_email}) · ${String(item.created_at || '').slice(0,10)}${item.responded_at ? ' · 회신 '+String(item.responded_at).slice(0,10) : ''}</div>`).join('')}`;
     actions.parentElement.insertBefore(panel, actions);
   };
 
@@ -412,9 +412,8 @@
       const subject = `[올핸즈] ${document.getElementById('invoiceMonth')?.value || ''} 청구서 검토 요청`;
       const body = `${recipientName} 담당자님,\n\n청구서 검토를 부탁드립니다. 아래 링크에서 로그인 없이 승인, 반려 또는 수정 요청을 남길 수 있습니다.\n\n${output.approvalUrl}\n\n링크 유효기간: ${String(output.expiresAt || '').slice(0,10)}까지\n\n감사합니다.`;
       const result = document.getElementById('externalApprovalResult');
-      result.innerHTML = `<div class="approval-link"><input readonly value="${output.approvalUrl}"><button class="secondary" id="copyApprovalLink">링크 복사</button><button class="primary" id="sendApprovalEmail">이메일 작성</button></div><p class="muted">수신자 확인 후 이메일을 발송하세요.</p>`;
-      document.getElementById('copyApprovalLink').onclick = async () => { await navigator.clipboard?.writeText(output.approvalUrl); alert('검토 링크를 복사했습니다.'); };
-      document.getElementById('sendApprovalEmail').onclick = () => { location.href = `mailto:${encodeURIComponent(recipientEmail)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`; };
+      result.innerHTML = '<p class="muted">고객사 메일 작성창을 열었습니다. 수신자와 내용을 확인한 뒤 발송해 주세요.</p>';
+      location.href = `mailto:${encodeURIComponent(recipientEmail)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
       const listResponse = await fetch('/api/operations'); const list = await listResponse.json(); if (listResponse.ok) window.externalApprovals = list.externalApprovals || [];
     } catch (error) { alert(error.message); }
   };
@@ -458,17 +457,7 @@
       heading.querySelector('p').textContent = '거래처별 청구서를 작성하고 원청 검토·내부결재 첨부 파일까지 관리합니다.';
     }
     const actions = document.querySelector('#invoiceDraft .invoice-actions');
-    const excelButton = [...(actions?.querySelectorAll('button') || [])].find(button => /엑셀/.test(button.textContent));
-    if (excelButton) {
-      excelButton.textContent = '내부결재 첨부파일 다운로드';
-      excelButton.onclick = window.downloadInvoiceForInternalApproval;
-    }
-    if (actions && !document.getElementById('recipientInvoicePreviewButton')) {
-      const previewButton = document.createElement('button');
-      previewButton.id = 'recipientInvoicePreviewButton'; previewButton.className = 'secondary'; previewButton.textContent = '원청 화면 미리보기';
-      previewButton.onclick = window.openRecipientInvoicePreview;
-      actions.prepend(previewButton);
-    }
+    [...(actions?.querySelectorAll('button') || [])].find(button => /엑셀|내부결재/.test(button.textContent))?.remove();
   };
 
   window.downloadInvoiceForInternalApproval = () => {
