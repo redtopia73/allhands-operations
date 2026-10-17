@@ -431,15 +431,22 @@
     if (!draft) return;
     document.getElementById('recipientInvoicePreview')?.remove();
     const recipient = document.getElementById('invoiceRecipient')?.value || '원청 담당자';
-    const month = document.getElementById('invoiceMonth')?.value || '-';
-    const client = document.getElementById('invoiceClient')?.value || '-';
-    const total = document.getElementById('invoiceGrandTotal')?.textContent || '0원';
-    const rows = [...document.querySelectorAll('#invoiceRows tr[data-id]')].map(row => ({ category:row.children[0]?.textContent || '인력', name:row.children[1]?.textContent || '-', subtotal:row.querySelector('[id$="-subtotal"]')?.textContent || '0원' }));
+    const invoice = draft.cloneNode(true);
+    invoice.querySelectorAll('button,.seal-upload,#externalApprovalPanel').forEach(element => element.remove());
+    invoice.querySelectorAll('input,select,textarea').forEach(field => {
+      const value = document.createElement('span');
+      value.className = 'preview-value'; value.textContent = field.value || '-';
+      field.replaceWith(value);
+    });
+    const title = invoice.querySelector('.invoice-title');
+    if (title) title.textContent = '청구서';
     const modal = document.createElement('div');
     modal.id = 'recipientInvoicePreview'; modal.className = 'document-preview';
-    modal.innerHTML = `<div class="preview-toolbar"><b>원청 검토 화면 미리보기</b><div><button class="secondary" id="recipientPreviewClose">닫기</button></div></div><article class="preview-paper" style="max-width:780px"><div style="font-size:12px;font-weight:800;color:#ff6257;letter-spacing:.08em">ALLHANDS REVIEW</div><h1 style="margin:8px 0 10px">청구서 검토 요청</h1><span style="display:inline-block;padding:7px 11px;border-radius:99px;background:#fff0ed;color:#c6483d;font-size:13px;font-weight:800">검토 대기</span><p style="line-height:1.7;color:#53627d">${esc(recipient)} 담당자님, 아래 청구 내용을 확인하고 승인·반려 또는 수정 요청을 남길 수 있습니다. 별도 회원가입은 필요하지 않습니다.</p><div style="margin:22px 0;border-top:1px solid #dce4f0"><div style="display:flex;justify-content:space-between;padding:12px 0;border-bottom:1px solid #dce4f0"><span>대상월</span><b>${esc(month)}</b></div><div style="display:flex;justify-content:space-between;padding:12px 0;border-bottom:1px solid #dce4f0"><span>거래처·현장</span><b>${esc(client)}</b></div>${rows.map(item => `<div style="display:flex;justify-content:space-between;gap:12px;padding:12px 0;border-bottom:1px solid #dce4f0"><span>${esc(item.category)} · ${esc(item.name)}</span><b>${esc(item.subtotal)}</b></div>`).join('')}<div style="display:flex;justify-content:space-between;padding:14px 0;font-size:21px;font-weight:900"><span>총액</span><b>${esc(total)}</b></div></div><button type="button" class="secondary" disabled>내부결재 첨부파일 다운로드</button><p class="muted">실제 링크에서는 이 버튼으로 검토 내용과 현재 상태를 파일로 내려받을 수 있습니다.</p><div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:18px"><button type="button" disabled>승인</button><button type="button" class="secondary" disabled>수정 요청</button><button type="button" class="secondary" disabled>반려</button></div></article>`;
+    modal.innerHTML = `<div class="preview-toolbar"><b>원청 검토 화면 미리보기</b><div><button class="secondary" id="recipientPreviewDownload">첨부파일 다운로드</button><button class="secondary" id="recipientPreviewClose">닫기</button></div></div><article class="preview-paper" style="max-width:1060px"><div style="font-size:12px;font-weight:800;color:#ff6257;letter-spacing:.08em">ALLHANDS REVIEW</div><h1 style="margin:8px 0 10px">청구서 검토 요청</h1><span style="display:inline-block;padding:7px 11px;border-radius:99px;background:#fff0ed;color:#c6483d;font-size:13px;font-weight:800">검토 대기</span><p style="line-height:1.7;color:#53627d">${esc(recipient)} 담당자님, 아래 청구서를 확인하고 승인·반려 또는 수정 요청을 남길 수 있습니다. 별도 회원가입은 필요하지 않습니다.</p><div class="recipient-invoice-document"></div><div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:18px"><button type="button" disabled>승인</button><button type="button" class="secondary" disabled>수정 요청</button><button type="button" class="secondary" disabled>반려</button></div></article>`;
+    modal.querySelector('.recipient-invoice-document').append(invoice);
     document.body.append(modal);
     modal.querySelector('#recipientPreviewClose').onclick = () => modal.remove();
+    modal.querySelector('#recipientPreviewDownload').onclick = window.downloadInvoiceForInternalApproval;
   };
 
   const invoiceManagementRender = window.renderInvoiceDraft;
