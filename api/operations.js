@@ -24,6 +24,32 @@ module.exports = async (req, res) => {
 
     if (req.method === 'POST') {
       const input = body(req);
+      if (input.action === 'external-approval-create') {
+        const documentId = Number(input.documentId);
+        const recipientName = String(input.recipientName || '').trim().slice(0, 120);
+        const recipientEmail = String(input.recipientEmail || '').trim().toLowerCase().slice(0, 254);
+        if (!documentId || !recipientName || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(recipientEmail)) return res.status(400).json({ error: '검토 담당자 이름과 올바른 이메일 주소를 입력해 주세요.' });
+        const documents = await db.query(
+          admin
+            ? "SELECT id,document_type,data FROM allhands_operation_documents WHERE id=$1 AND document_type IN ('invoice','payroll-calculation')"
+            : "SELECT id,document_type,data FROM allhands_operation_documents WHERE id=$1 AND owner_company_id=$2 AND document_type IN ('invoice','payroll-calculation')",
+          admin ? [documentId] : [documentId, ownerCompanyId]
+        );
+        const documentRow = documents[0];
+        if (!documentRow) return res.status(404).json({ error: '검토 요청을 보낼 청구서 또는 급여정산 문서를 찾지 못했습니다.' });
+        const token = crypto.randomBytes(32).toString('base64url');
+        const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
+        const now = new Date().toISOString();
+        const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+        const event = [{ type: 'created', label: '검토 요청 생성', at: now, actor: admin ? '운영 관리자' : '기업 운영담당자' }];
+        const saved = await db.query(
+          'INSERT INTO allhands_external_approvals (owner_company_id,document_id,document_type,recipient_name,recipient_email,access_token_hash,document_snapshot,events,expires_at) VALUES ($1,$2,$3,$4,$5,$6,$7::jsonb,$8::jsonb,$9) RETURNING id,expires_at',
+          [ownerCompanyId, documentRow.id, documentRow.document_type, recipientName, recipientEmail, tokenHash, JSON.stringify(documentRow.data || {}), JSON.stringify(event), expiresAt]
+        );
+        const host = String(req.headers['x-forwarded-host'] || req.headers.host || 'allhands-operations.vercel.app').split(',')[0].trim();
+        const protocol = String(req.headers['x-forwarded-proto'] || 'https').split(',')[0].trim() || 'https';
+        return res.status(201).json({ ok: true, id: saved[0].id, approvalUrl: `${protocol}://${host}/approval.html?token=${encodeURIComponent(token)}`, expiresAt: saved[0].expires_at });
+      }
       if (input.action === 'workflow-notify') {
         const appId = Number(input.applicationId);
         const step = String(input.step || '').trim();
@@ -389,13 +415,19 @@ module.exports = async (req, res) => {
           : "SELECT id,recipient_id,created_at,read_at FROM allhands_messages WHERE sender_kind='company' AND sender_id=$1 ORDER BY created_at DESC LIMIT 300",
         admin ? [] : [Number(company.id)]
       );
+      const externalApprovals = await db.query(
+        admin
+          ? 'SELECT id,document_id,document_type,recipient_name,recipient_email,status,opened_at,responded_at,expires_at,created_at,events FROM allhands_external_approvals ORDER BY created_at DESC LIMIT 100'
+          : 'SELECT id,document_id,document_type,recipient_name,recipient_email,status,opened_at,responded_at,expires_at,created_at,events FROM allhands_external_approvals WHERE owner_company_id=$1 ORDER BY created_at DESC LIMIT 100',
+        admin ? [] : [ownerCompanyId]
+      );
       let companyName = '';
       if (company) {
         const companyRows = await db.query('SELECT data FROM allhands_signup_applications WHERE id=$1 LIMIT 1', [Number(company.id)]);
         const companyData = companyRows[0]?.data || {};
         companyName = String(companyData.companyName || companyData.company || companyData.name || '').trim();
       }
-      return res.status(200).json({ jobs, people, documents, messages, role: admin ? 'admin' : 'company', companyName });
+      return res.status(200).json({ jobs, people, documents, messages, externalApprovals, role: admin ? 'admin' : 'company', companyName });
     }
 
     return res.status(405).json({ error: '허용되지 않은 요청입니다.' });

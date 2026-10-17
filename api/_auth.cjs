@@ -18,6 +18,8 @@ async function ensureTables() {
   await db.query("ALTER TABLE allhands_messages ADD COLUMN IF NOT EXISTS read_at TIMESTAMPTZ");
   await db.query("ALTER TABLE allhands_messages ADD COLUMN IF NOT EXISTS attachments JSONB NOT NULL DEFAULT '[]'::jsonb");
   await db.query("CREATE TABLE IF NOT EXISTS allhands_operation_documents (id BIGSERIAL PRIMARY KEY, owner_company_id TEXT, document_type TEXT NOT NULL, data JSONB NOT NULL, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW())");
+  await db.query("CREATE TABLE IF NOT EXISTS allhands_external_approvals (id BIGSERIAL PRIMARY KEY, owner_company_id TEXT, document_id BIGINT NOT NULL, document_type TEXT NOT NULL, recipient_name TEXT NOT NULL, recipient_email TEXT NOT NULL, access_token_hash TEXT NOT NULL UNIQUE, status TEXT NOT NULL DEFAULT 'pending', document_snapshot JSONB NOT NULL, events JSONB NOT NULL DEFAULT '[]'::jsonb, opened_at TIMESTAMPTZ, responded_at TIMESTAMPTZ, expires_at TIMESTAMPTZ NOT NULL, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW())");
+  await db.query("CREATE INDEX IF NOT EXISTS allhands_external_approvals_owner_idx ON allhands_external_approvals (owner_company_id, created_at DESC)");
   return db;
 }
 
