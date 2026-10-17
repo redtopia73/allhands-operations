@@ -60,7 +60,7 @@
   </div>
   <header class="top"><div class="brand">all hands <em>운영관리</em></div><div class="user"><a class="job-home-link" href="https://allhands-job.vercel.app">올핸잡</a><a class="guide-link" href="guide.html">기능안내</a><span id="userText">기업·관리자 전용 · 올핸 JOB 연동</span></div></header>
   <section class="operations-global-hero"><div class="operations-hero-copy"><div class="eyebrow">ALLHANDS JOB</div><h1>올핸잡 현장운영 통합관리</h1><p>지원자 관리부터 현장 배치, 근태 확인과 급여 정산까지 운영 업무를 한곳에서 관리합니다.</p></div><div class="operations-hero-mark"><span>ALLHANDS JOB</span><strong>운영관리<br>시스템</strong></div></section>
-  <div class="layout"><aside><p class="small">OPERATIONS</p><nav id="sideNav"><button class="active" data-view="dashboard">대시보드</button><button data-view="applicants">지원관리</button><button data-view="people">배치현황</button><button data-view="clients">거래처 관리</button><button data-view="personnel">인력정보</button><button data-view="attendance">근태관리</button><button data-view="payroll">급여·정산</button><div id="payrollSubnav" class="payroll-subnav" style="display:none"><button data-view="invoice">청구서 작성</button></div><button data-view="contracts">계약관리</button><div id="contractSubnav" class="contract-subnav" style="display:none"><button data-view="quote">견적서 작성</button><button data-view="contract">도급계약서 작성</button><button data-view="dispatch-contract">파견계약서 작성</button></div><button data-view="certificates">증명서 발급</button><button data-view="inquiry">시스템 문의</button></nav></aside>
+  <div class="layout"><aside><p class="small">OPERATIONS</p><nav id="sideNav"><button class="active" data-view="dashboard">대시보드</button><button data-view="applicants">지원관리</button><button data-view="people">배치현황</button><button data-view="clients">거래처 관리</button><button data-view="personnel">인력정보</button><button data-view="attendance">근태관리</button><button data-view="payroll">급여·정산</button><div id="payrollSubnav" class="payroll-subnav" style="display:none"></div><button data-view="invoice">청구관리</button><button data-view="contracts">계약관리</button><div id="contractSubnav" class="contract-subnav" style="display:none"><button data-view="quote">견적서 작성</button><button data-view="contract">도급계약서 작성</button><button data-view="dispatch-contract">파견계약서 작성</button></div><button data-view="certificates">증명서 발급</button><button data-view="inquiry">시스템 문의</button></nav></aside>
   <main id="app"><div class="loading">로그인 정보를 확인하고 있습니다.</div></main></div>
   <script>
     const $=s=>document.querySelector(s), won=n=>new Intl.NumberFormat('ko-KR').format(Math.round(Number(n)||0))+'원';
@@ -421,6 +421,90 @@
 
   const previousSaveInvoice = window.saveInvoice;
   window.saveInvoice = async () => { await previousSaveInvoice(); await window.loadData(); window.renderInvoiceDraft(); };
+})();
+</script>
+<script>
+(() => {
+  window.openRecipientInvoicePreview = () => {
+    window.invoiceCalculator();
+    const draft = document.getElementById('invoiceDraft');
+    if (!draft) return;
+    document.getElementById('recipientInvoicePreview')?.remove();
+    const recipient = document.getElementById('invoiceRecipient')?.value || '원청 담당자';
+    const month = document.getElementById('invoiceMonth')?.value || '-';
+    const client = document.getElementById('invoiceClient')?.value || '-';
+    const total = document.getElementById('invoiceGrandTotal')?.textContent || '0원';
+    const rows = [...document.querySelectorAll('#invoiceRows tr[data-id]')].map(row => ({ category:row.children[0]?.textContent || '인력', name:row.children[1]?.textContent || '-', subtotal:row.querySelector('[id$="-subtotal"]')?.textContent || '0원' }));
+    const modal = document.createElement('div');
+    modal.id = 'recipientInvoicePreview'; modal.className = 'document-preview';
+    modal.innerHTML = `<div class="preview-toolbar"><b>원청 검토 화면 미리보기</b><div><button class="secondary" id="recipientPreviewClose">닫기</button></div></div><article class="preview-paper" style="max-width:780px"><div style="font-size:12px;font-weight:800;color:#ff6257;letter-spacing:.08em">ALLHANDS REVIEW</div><h1 style="margin:8px 0 10px">청구서 검토 요청</h1><span style="display:inline-block;padding:7px 11px;border-radius:99px;background:#fff0ed;color:#c6483d;font-size:13px;font-weight:800">검토 대기</span><p style="line-height:1.7;color:#53627d">${esc(recipient)} 담당자님, 아래 청구 내용을 확인하고 승인·반려 또는 수정 요청을 남길 수 있습니다. 별도 회원가입은 필요하지 않습니다.</p><div style="margin:22px 0;border-top:1px solid #dce4f0"><div style="display:flex;justify-content:space-between;padding:12px 0;border-bottom:1px solid #dce4f0"><span>대상월</span><b>${esc(month)}</b></div><div style="display:flex;justify-content:space-between;padding:12px 0;border-bottom:1px solid #dce4f0"><span>거래처·현장</span><b>${esc(client)}</b></div>${rows.map(item => `<div style="display:flex;justify-content:space-between;gap:12px;padding:12px 0;border-bottom:1px solid #dce4f0"><span>${esc(item.category)} · ${esc(item.name)}</span><b>${esc(item.subtotal)}</b></div>`).join('')}<div style="display:flex;justify-content:space-between;padding:14px 0;font-size:21px;font-weight:900"><span>총액</span><b>${esc(total)}</b></div></div><button type="button" class="secondary" disabled>내부결재 첨부파일 다운로드</button><p class="muted">실제 링크에서는 이 버튼으로 검토 내용과 현재 상태를 파일로 내려받을 수 있습니다.</p><div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:18px"><button type="button" disabled>승인</button><button type="button" class="secondary" disabled>수정 요청</button><button type="button" class="secondary" disabled>반려</button></div></article>`;
+    document.body.append(modal);
+    modal.querySelector('#recipientPreviewClose').onclick = () => modal.remove();
+  };
+
+  const invoiceManagementRender = window.renderInvoiceDraft;
+  window.renderInvoiceDraft = () => {
+    invoiceManagementRender();
+    const heading = document.querySelector('#app .heading');
+    if (heading) {
+      heading.querySelector('h1').textContent = '청구관리';
+      heading.querySelector('p').textContent = '거래처별 청구서를 작성하고 원청 검토·내부결재 첨부 파일까지 관리합니다.';
+    }
+    const actions = document.querySelector('#invoiceDraft .invoice-actions');
+    const excelButton = [...(actions?.querySelectorAll('button') || [])].find(button => /엑셀/.test(button.textContent));
+    if (excelButton) {
+      excelButton.textContent = '내부결재 첨부파일 다운로드';
+      excelButton.onclick = window.downloadInvoiceForInternalApproval;
+    }
+    if (actions && !document.getElementById('recipientInvoicePreviewButton')) {
+      const previewButton = document.createElement('button');
+      previewButton.id = 'recipientInvoicePreviewButton'; previewButton.className = 'secondary'; previewButton.textContent = '원청 화면 미리보기';
+      previewButton.onclick = window.openRecipientInvoicePreview;
+      actions.prepend(previewButton);
+    }
+  };
+
+  window.downloadInvoiceForInternalApproval = () => {
+    const draft = document.getElementById('invoiceDraft');
+    if (!draft) return;
+    window.invoiceCalculator();
+    const copy = draft.cloneNode(true);
+    copy.querySelectorAll('button,.seal-upload,#externalApprovalPanel').forEach(element => element.remove());
+    copy.querySelectorAll('input,select,textarea').forEach(field => {
+      const value = document.createElement('span');
+      value.textContent = field.value || '-';
+      field.replaceWith(value);
+    });
+    const title = copy.querySelector('.invoice-title');
+    if (title) title.textContent = '원청 청구서 · 내부결재 첨부용';
+    const cover = document.createElement('div');
+    cover.className = 'internal-approval-cover';
+    cover.innerHTML = `<b>내부결재 첨부 문서</b><span>작성일: ${new Date().toLocaleDateString('ko-KR')}</span><span>원청 수신처: ${document.getElementById('invoiceRecipient')?.value || '-'}</span>`;
+    copy.prepend(cover);
+    const styles = '<style>body{font-family:"Malgun Gothic",Arial,sans-serif;color:#172852}table{border-collapse:collapse;width:100%;font-size:10pt}th,td{border:1px solid #9aa8bd;padding:6px;text-align:center;white-space:nowrap}th{background:#edf1fb;font-weight:bold}.invoice-money{text-align:right}.invoice-total td{background:#eef3ff;font-weight:bold}.invoice-grand td{background:#1b2a57;color:#fff;font-weight:bold}.invoice-title{text-align:center;font-size:20pt;font-weight:bold;margin:18px}.invoice-info{margin-bottom:12px}.invoice-info label{display:inline-block;width:30%;margin:4px}.invoice-info span{display:block;border-bottom:1px solid #cbd4e1;padding:4px}.internal-approval-cover{display:flex;gap:18px;align-items:center;padding:10px 12px;border:1px solid #9aa8bd;background:#f5f7fb;font-size:10pt}.internal-approval-cover b{color:#172852}.internal-approval-cover span{color:#53627d}</style>';
+    const html = '<!doctype html><html><head><meta charset="utf-8">' + styles + '</head><body>' + copy.outerHTML + '</body></html>';
+    const blob = new Blob(['\ufeff', html], { type:'application/vnd.ms-excel;charset=utf-8' });
+    const url = URL.createObjectURL(blob), link = document.createElement('a');
+    const month = document.getElementById('invoiceMonth')?.value || '청구월';
+    const client = (document.getElementById('invoiceClient')?.value || '원청').replace(/[\\/:*?"<>|]/g, '_');
+    link.href = url; link.download = `원청청구서_내부결재첨부_${client}_${month}.xls`;
+    document.body.append(link); link.click(); link.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  };
+
+  const invoiceManagementNavigation = window.setView;
+  window.setView = next => {
+    if (next === 'invoice') {
+      invoiceManagementNavigation('dashboard');
+      setTimeout(() => {
+        document.getElementById('payrollSubnav').style.display = 'none';
+        document.querySelectorAll('#sideNav > [data-view]').forEach(button => button.classList.toggle('active', button.dataset.view === 'invoice'));
+        window.renderInvoiceDraft();
+      }, 0);
+      return;
+    }
+    invoiceManagementNavigation(next);
+  };
 })();
 </script>
 </body>
