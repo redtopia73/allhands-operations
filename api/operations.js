@@ -322,9 +322,44 @@ module.exports = async (req, res) => {
         if (!documentId || !['승인','반려'].includes(status)) return res.status(400).json({ error: '결재 상태를 확인해 주세요.' });
         const documents = await db.query(admin ? "SELECT id,data FROM allhands_operation_documents WHERE id=$1 AND document_type IN ('worker-certificate-request','worker-attendance-request')" : "SELECT id,data FROM allhands_operation_documents WHERE id=$1 AND owner_company_id=$2 AND document_type IN ('worker-certificate-request','worker-attendance-request')", admin ? [documentId] : [documentId, ownerCompanyId]);
         if (!documents[0]) return res.status(404).json({ error: '결재 대상을 찾지 못했습니다.' });
-        const next = { ...(documents[0].data || {}), status, decidedAt: new Date().toISOString() };
+        const request = documents[0].data || {};
+        let attendanceApplied = false;
+        if (status === '승인' && request.kind === 'attendance') {
+          const applicationId = Number(request.applicationId);
+          const requestDate = String(request.requestDate || '');
+          if (!applicationId || !/^\d{4}-\d{2}-\d{2}$/.test(requestDate)) return res.status(400).json({ error: '근태 발생일이 없는 신청입니다. 근로자에게 날짜를 선택해 다시 신청하도록 안내해 주세요.' });
+          const people = await db.query(
+            admin
+              ? 'SELECT id,employer_note FROM allhands_job_applications WHERE id=$1'
+              : "SELECT a.id,a.employer_note FROM allhands_job_applications a JOIN allhands_job_posts j ON a.job_id='db-'||j.id::text WHERE a.id=$1 AND j.data->>'ownerCompanyId'=$2",
+            admin ? [applicationId] : [applicationId, ownerCompanyId]
+          );
+          if (!people[0]) return res.status(404).json({ error: '근태 반영 대상 인력을 찾지 못했습니다.' });
+          const previous = people[0].employer_note || {};
+          const operation = previous.operation || {};
+          const month = requestDate.slice(0, 7);
+          const day = String(Number(requestDate.slice(8, 10)));
+          const calendar = operation.attendanceCalendar && typeof operation.attendanceCalendar === 'object' ? operation.attendanceCalendar : { months: {}, closedMonths: {} };
+          if (calendar.closedMonths?.[month]) return res.status(409).json({ error: '해당 월 근태가 이미 마감되어 승인 내용을 자동 반영할 수 없습니다. 마감 취소 후 다시 승인해 주세요.' });
+          const hours = { '연차': 8, '반차': 4, '조퇴': 4, '지각 사유서': 7 };
+          const oldDay = calendar.months?.[month]?.days?.[day] || {};
+          const days = { ...(calendar.months?.[month]?.days || {}) };
+          days[day] = {
+            ...oldDay,
+            basic: oldDay.basic !== undefined ? oldDay.basic : (hours[request.requestType] ?? 8),
+            overtime: oldDay.overtime !== undefined ? oldDay.overtime : 0,
+            night: oldDay.night !== undefined ? oldDay.night : 0,
+            approvalStatus: request.requestType || '근태 승인',
+            approvalDocumentId: documentId,
+            approvedAt: new Date().toISOString()
+          };
+          const attendanceCalendar = { ...calendar, months: { ...(calendar.months || {}), [month]: { ...(calendar.months?.[month] || {}), days } }, closedMonths: { ...(calendar.closedMonths || {}) } };
+          await db.query('UPDATE allhands_job_applications SET employer_note=$1::jsonb WHERE id=$2', [JSON.stringify({ ...previous, operation: { ...operation, attendanceCalendar, updatedAt: new Date().toISOString() } }), applicationId]);
+          attendanceApplied = true;
+        }
+        const next = { ...request, status, decidedAt: new Date().toISOString(), attendanceApplied };
         await db.query('UPDATE allhands_operation_documents SET data=$1::jsonb,updated_at=NOW() WHERE id=$2', [JSON.stringify(next), documentId]);
-        return res.status(200).json({ ok: true, message: `${status} 처리했습니다.` });
+        return res.status(200).json({ ok: true, message: attendanceApplied ? '승인했고 해당 날짜 근태표에 자동 반영했습니다.' : `${status} 처리했습니다.` });
       }
       if (input.action === 'quote-save' || input.action === 'contract-save' || input.action === 'dispatch-contract-save' || input.action === 'assignment-to-save' || input.action === 'invoice-save' || input.action === 'job-client-save' || input.action === 'payroll-calculation-save' || input.action === 'payslip-delivery-save' || input.action === 'worker-notice-save') {
         const documentType = input.action === 'quote-save' ? 'quote' : input.action === 'invoice-save' ? 'invoice' : input.action === 'job-client-save' ? 'job-client' : input.action === 'payroll-calculation-save' ? 'payroll-calculation' : input.action === 'payslip-delivery-save' ? 'payslip-delivery' : input.action === 'worker-notice-save' ? 'worker-notice' : input.action === 'dispatch-contract-save' ? 'dispatch-contract' : input.action === 'assignment-to-save' ? 'assignment-to' : 'contract';

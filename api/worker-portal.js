@@ -92,9 +92,12 @@ module.exports = async (req, res) => {
 
     if (input.action === 'request') {
       const kind = ['certificate', 'attendance'].includes(input.kind) ? input.kind : 'attendance';
+      const requestDate = kind === 'attendance' ? clean(input.requestDate) : '';
+      if (kind === 'attendance' && !/^\d{4}-\d{2}-\d{2}$/.test(requestDate)) return res.status(400).json({ error: '근태 발생일을 선택해 주세요.' });
       const request = {
         kind,
         requestType: clean(input.requestType).slice(0, 60),
+        requestDate,
         content: clean(input.content).slice(0, 1000),
         status: '결재 대기',
         applicationId: target.id,
