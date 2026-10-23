@@ -22,6 +22,11 @@ module.exports = async (req, res) => {
       const notices = await db.query("SELECT id,data,created_at FROM allhands_operation_documents WHERE document_type='worker-notice' ORDER BY created_at DESC LIMIT 100");
       const requests = await db.query("SELECT id,data,created_at FROM allhands_operation_documents WHERE document_type IN ('worker-certificate-request','worker-attendance-request') AND data->>'workerId'=$1 ORDER BY created_at DESC LIMIT 100", [String(worker.id)]);
       const contracts = await db.query("SELECT id,data,created_at FROM allhands_operation_documents WHERE document_type='employment-contract' AND data->>'workerId'=$1 ORDER BY created_at DESC LIMIT 30", [String(worker.id)]);
+      const applicationIds = rows.map(row => String(row.id));
+      const deliveries = applicationIds.length
+        ? await db.query("SELECT id,data,created_at FROM allhands_operation_documents WHERE document_type='payslip-delivery' AND data->>'applicationId'=ANY($1::text[]) ORDER BY created_at DESC LIMIT 100", [applicationIds])
+        : [];
+      const payslipMessages = await db.query("SELECT id,subject,body,created_at FROM allhands_messages WHERE recipient_kind='worker' AND recipient_id=$1 AND subject LIKE '%임금명세서%' ORDER BY created_at DESC LIMIT 100", [Number(worker.id)]);
       const companyIds = new Set(rows.map(row => String(row.job_data?.ownerCompanyId || '')));
       const links = await db.query("SELECT data FROM allhands_operation_documents WHERE document_type='job-client' AND data->>'jobId'=ANY($1::text[])", [rows.map(row => String(row.job_id || ''))]);
       const clients = Object.fromEntries(links.map(link => [String(link.data?.jobId || ''), clean(link.data?.clientName)]).filter(([, name]) => name));
@@ -30,7 +35,9 @@ module.exports = async (req, res) => {
         items,
         notices: notices.filter(item => item.data?.scope === 'all' || companyIds.has(String(item.data?.companyId || ''))).map(item => ({ id: item.id, ...item.data, createdAt: item.created_at })),
         requests: requests.map(item => ({ id: item.id, ...item.data, createdAt: item.created_at })),
-        contracts: contracts.map(item => ({ id: item.id, ...item.data, createdAt: item.created_at }))
+        contracts: contracts.map(item => ({ id: item.id, ...item.data, createdAt: item.created_at })),
+        payslips: deliveries.map(item => ({ id: item.id, ...item.data, createdAt: item.created_at })),
+        payslipMessages: payslipMessages.map(item => ({ id: item.id, subject: item.subject, body: item.body, createdAt: item.created_at }))
       });
     }
 
