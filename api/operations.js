@@ -418,14 +418,14 @@ module.exports = async (req, res) => {
     if (req.method === 'GET') {
       const jobs = await db.query(
         admin
-          ? "SELECT id,data FROM allhands_job_posts WHERE status='active' ORDER BY updated_at DESC"
-          : "SELECT id,data FROM allhands_job_posts WHERE status='active' AND data->>'ownerCompanyId'=$1 ORDER BY updated_at DESC",
+          ? "SELECT id,data FROM allhands_job_posts WHERE status='active' AND COALESCE(data->>'listingType','hiring')<>'b2b' ORDER BY updated_at DESC"
+          : "SELECT id,data FROM allhands_job_posts WHERE status='active' AND COALESCE(data->>'listingType','hiring')<>'b2b' AND data->>'ownerCompanyId'=$1 ORDER BY updated_at DESC",
         admin ? [] : [ownerCompanyId]
       );
       const people = await db.query(
         admin
-          ? 'SELECT id,job_id,job_title,worker_data,status,employer_note,created_at FROM allhands_job_applications ORDER BY created_at DESC LIMIT 300'
-          : "SELECT a.id,a.job_id,a.job_title,a.worker_data,a.status,a.employer_note,a.created_at FROM allhands_job_applications a JOIN allhands_job_posts j ON a.job_id='db-'||j.id::text WHERE j.data->>'ownerCompanyId'=$1 ORDER BY a.created_at DESC LIMIT 300",
+          ? "SELECT a.id,a.job_id,a.job_title,a.worker_data,a.status,a.employer_note,a.created_at FROM allhands_job_applications a JOIN allhands_job_posts j ON a.job_id='db-'||j.id::text WHERE COALESCE(j.data->>'listingType','hiring')<>'b2b' ORDER BY a.created_at DESC LIMIT 300"
+          : "SELECT a.id,a.job_id,a.job_title,a.worker_data,a.status,a.employer_note,a.created_at FROM allhands_job_applications a JOIN allhands_job_posts j ON a.job_id='db-'||j.id::text WHERE COALESCE(j.data->>'listingType','hiring')<>'b2b' AND j.data->>'ownerCompanyId'=$1 ORDER BY a.created_at DESC LIMIT 300",
         admin ? [] : [ownerCompanyId]
       );
       const memberIds = people.map(item => Number(item.worker_data?.memberId)).filter(Number.isSafeInteger);
