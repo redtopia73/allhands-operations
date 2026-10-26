@@ -2,8 +2,24 @@ const crypto = require('crypto');
 const { neon } = require('@neondatabase/serverless');
 
 function sql() {
-  if (!process.env.DATABASE_URL) throw new Error('database-not-configured');
-  return neon(process.env.DATABASE_URL);
+  const connectionStrings = [...new Set([process.env.DATABASE_URL, process.env.POSTGRES_URL].filter(Boolean))];
+  if (!connectionStrings.length) throw new Error('database-not-configured');
+  let selected = null;
+  return {
+    async query(...args) {
+      if (selected) return selected.query(...args);
+      let lastError;
+      for (const connectionString of connectionStrings) {
+        try {
+          const candidate = neon(connectionString);
+          const result = await candidate.query(...args);
+          selected = candidate;
+          return result;
+        } catch (error) { lastError = error; }
+      }
+      throw lastError;
+    }
+  };
 }
 
 // The operations site uses the exact same database as allhands-job.
