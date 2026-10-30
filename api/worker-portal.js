@@ -2,6 +2,12 @@ const { ensureTables, valid, body } = require('./_auth.cjs');
 
 const clean = value => String(value || '').trim();
 const attendanceStatuses = ['정상근무', '출근', '지각', '결근', '휴무'];
+const companyScoreKeys = ['payAccuracy', 'payTimeliness', 'conditionMatch', 'communication', 'safety'];
+
+function scoreValue(value) {
+  const number = Number(value);
+  return Number.isInteger(number) && number >= 1 && number <= 5 ? number : null;
+}
 
 async function applications(db, workerId) {
   return db.query(
@@ -28,6 +34,9 @@ module.exports = async (req, res) => {
         : [];
       const payslipMessages = await db.query("SELECT id,subject,body,created_at FROM allhands_messages WHERE recipient_kind='worker' AND recipient_id=$1 AND subject LIKE '%임금명세서%' ORDER BY created_at DESC LIMIT 100", [Number(worker.id)]);
       const companyIds = new Set(rows.map(row => String(row.job_data?.ownerCompanyId || '')));
+      const reviews = companyIds.size
+        ? await db.query("SELECT company_id,scores,comment,status,updated_at FROM allhands_company_reviews WHERE worker_id=$1 AND company_id=ANY($2::bigint[])", [Number(worker.id), [...companyIds].filter(Boolean).map(Number)])
+        : [];
       const links = await db.query("SELECT data FROM allhands_operation_documents WHERE document_type='job-client' AND data->>'jobId'=ANY($1::text[])", [rows.map(row => String(row.job_id || ''))]);
       const clients = Object.fromEntries(links.map(link => [String(link.data?.jobId || ''), clean(link.data?.clientName)]).filter(([, name]) => name));
       const items = rows.map(row => ({ ...row, client_name: clients[String(row.job_id || '')] || '' }));
@@ -36,6 +45,7 @@ module.exports = async (req, res) => {
         notices: notices.filter(item => item.data?.scope === 'all' || companyIds.has(String(item.data?.companyId || ''))).map(item => ({ id: item.id, ...item.data, createdAt: item.created_at })),
         requests: requests.map(item => ({ id: item.id, ...item.data, createdAt: item.created_at })),
         contracts: contracts.map(item => ({ id: item.id, ...item.data, createdAt: item.created_at })),
+        companyReviews: reviews.map(item => ({ companyId: String(item.company_id), scores: item.scores || {}, comment: item.comment || '', status: item.status, updatedAt: item.updated_at })),
         payslips: deliveries.map(item => ({ id: item.id, ...item.data, createdAt: item.created_at })),
         payslipMessages: payslipMessages.map(item => ({ id: item.id, subject: item.subject, body: item.body, createdAt: item.created_at }))
       });
@@ -49,6 +59,24 @@ module.exports = async (req, res) => {
     const target = rows.find(row => String(row.id) === String(applicationId));
     if (!target) return res.status(404).json({ error: '배치된 근무 정보를 찾지 못했습니다.' });
     const previous = target.employer_note || {};
+
+    if (input.action === 'company-review') {
+      const companyId = Number(target.job_data?.ownerCompanyId);
+      if (!Number.isSafeInteger(companyId)) return res.status(400).json({ error: '평가할 업체 정보를 확인하지 못했습니다.' });
+      const scores = {};
+      for (const key of companyScoreKeys) {
+        const value = scoreValue(input.scores?.[key]);
+        if (!value) return res.status(400).json({ error: '모든 평가 항목을 1~5점으로 입력해 주세요.' });
+        scores[key] = value;
+      }
+      const comment = clean(input.comment).slice(0, 1000);
+      await db.query(`INSERT INTO allhands_company_reviews (company_id,worker_id,scores,comment,status)
+        VALUES ($1,$2,$3::jsonb,$4,'published')
+        ON CONFLICT (company_id,worker_id)
+        DO UPDATE SET scores=EXCLUDED.scores,comment=EXCLUDED.comment,status='published',updated_at=NOW()`,
+        [companyId, Number(worker.id), JSON.stringify(scores), comment]);
+      return res.status(200).json({ ok: true, message: '업체 평가를 저장했습니다. 업체 신뢰정보에 반영됩니다.' });
+    }
 
     if (input.action === 'attendance-month') {
       const month = clean(input.month);
@@ -119,3 +147,4 @@ module.exports = async (req, res) => {
     return res.status(500).json({ error: '개인 운영관리 정보를 처리하지 못했습니다.' });
   }
 };
+
