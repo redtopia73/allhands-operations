@@ -30,6 +30,7 @@ async function ensureTables() {
   await db.query("CREATE TABLE IF NOT EXISTS allhands_job_posts (id BIGSERIAL PRIMARY KEY, data JSONB NOT NULL, status TEXT NOT NULL DEFAULT 'active', created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW())");
   await db.query("CREATE TABLE IF NOT EXISTS allhands_job_applications (id BIGSERIAL PRIMARY KEY, job_id TEXT NOT NULL, job_title TEXT NOT NULL, worker_data JSONB NOT NULL, status TEXT NOT NULL DEFAULT 'applied', created_at TIMESTAMPTZ NOT NULL DEFAULT NOW())");
   await db.query("ALTER TABLE allhands_job_applications ADD COLUMN IF NOT EXISTS employer_note JSONB");
+  await db.query("CREATE TABLE IF NOT EXISTS allhands_company_reviews (id BIGSERIAL PRIMARY KEY, company_id BIGINT NOT NULL, worker_id BIGINT NOT NULL, scores JSONB NOT NULL, comment TEXT NOT NULL DEFAULT '', status TEXT NOT NULL DEFAULT 'pending', created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), UNIQUE(company_id, worker_id))");
   await db.query("CREATE TABLE IF NOT EXISTS allhands_messages (id BIGSERIAL PRIMARY KEY, sender_kind TEXT NOT NULL, sender_id BIGINT, sender_name TEXT NOT NULL, recipient_kind TEXT NOT NULL, recipient_id BIGINT, recipient_name TEXT NOT NULL, subject TEXT NOT NULL, body TEXT NOT NULL, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW())");
   await db.query("ALTER TABLE allhands_messages ADD COLUMN IF NOT EXISTS read_at TIMESTAMPTZ");
   await db.query("ALTER TABLE allhands_messages ADD COLUMN IF NOT EXISTS attachments JSONB NOT NULL DEFAULT '[]'::jsonb");
@@ -65,3 +66,4 @@ function errorKind(error) {
 }
 
 module.exports = { sql, ensureTables, cookie, valid, body, errorKind };
+
