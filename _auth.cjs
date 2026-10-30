@@ -33,6 +33,7 @@ async function ensureTables() {
   await db.query("CREATE TABLE IF NOT EXISTS allhands_messages (id BIGSERIAL PRIMARY KEY, sender_kind TEXT NOT NULL, sender_id BIGINT, sender_name TEXT NOT NULL, recipient_kind TEXT NOT NULL, recipient_id BIGINT, recipient_name TEXT NOT NULL, subject TEXT NOT NULL, body TEXT NOT NULL, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW())");
   await db.query("ALTER TABLE allhands_messages ADD COLUMN IF NOT EXISTS read_at TIMESTAMPTZ");
   await db.query("ALTER TABLE allhands_messages ADD COLUMN IF NOT EXISTS attachments JSONB NOT NULL DEFAULT '[]'::jsonb");
+  await db.query("ALTER TABLE allhands_messages ADD COLUMN IF NOT EXISTS message_type TEXT NOT NULL DEFAULT 'message'");
   await db.query("CREATE TABLE IF NOT EXISTS allhands_operation_workers (id BIGSERIAL PRIMARY KEY, owner_company_id TEXT, client_name TEXT NOT NULL, job_title TEXT NOT NULL DEFAULT '', data JSONB NOT NULL, operation JSONB NOT NULL DEFAULT '{}'::jsonb, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW())");
   await db.query("CREATE TABLE IF NOT EXISTS allhands_operation_documents (id BIGSERIAL PRIMARY KEY, owner_company_id TEXT, document_type TEXT NOT NULL, data JSONB NOT NULL, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW())");
   return db;
@@ -64,3 +65,4 @@ function errorKind(error) {
 }
 
 module.exports = { sql, ensureTables, cookie, valid, body, errorKind };
+
