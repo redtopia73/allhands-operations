@@ -282,7 +282,7 @@ module.exports = async (req, res) => {
         const messageBody = String(document.body || '').trim().slice(0, 3000);
         if (!subject || !messageBody) return res.status(400).json({ error: '명세서 내용이 준비되지 않았습니다.' });
         const sent = await db.query(
-          'INSERT INTO allhands_messages (sender_kind,sender_id,sender_name,recipient_kind,recipient_id,recipient_name,subject,body,attachments) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9::jsonb) RETURNING id,created_at',
+          "INSERT INTO allhands_messages (sender_kind,sender_id,sender_name,recipient_kind,recipient_id,recipient_name,subject,body,attachments,message_type) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9::jsonb,'message') RETURNING id,created_at",
           [admin ? 'admin' : 'company', admin ? null : Number(company.id), senderName, 'worker', workerId, String(workers[0].data?.name || person.worker_data?.name || '구직자'), subject, messageBody, '[]']
         );
         const delivery = { applicationId: appId, month: String(document.month || ''), payDate: String(document.payDate || ''), deliveryMethod: '플랫폼 쪽지', deliveredAt: new Date().toISOString(), messageId: sent[0].id, payslip: document.payslip && typeof document.payslip === 'object' ? document.payslip : null };
@@ -470,3 +470,4 @@ module.exports = async (req, res) => {
     return res.status(500).json({ error: errorKind(error) });
   }
 };
+
