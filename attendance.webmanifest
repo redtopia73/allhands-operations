@@ -1,0 +1,13 @@
+{
+  "name": "올핸잡 출퇴근",
+  "short_name": "올핸잡 근태",
+  "description": "출근·퇴근 시간과 현장 위치를 운영관리 근태에 기록합니다.",
+  "start_url": "/attendance.html",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#f2f6fb",
+  "theme_color": "#123366",
+  "lang": "ko",
+  "icons": [{"src":"/attendance-icon.svg","sizes":"any","type":"image/svg+xml","purpose":"any maskable"}]
+}
+

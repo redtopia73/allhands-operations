@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#123366">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="올핸잡 출퇴근">
+  <link rel="manifest" href="/attendance.webmanifest">
+  <link rel="icon" href="/attendance-icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="/attendance-icon.svg">
+  <title>출퇴근 | all hands JOB</title>
+  <style>
+    :root{--navy:#162b5b;--blue:#123b72;--teal:#118e91;--coral:#ff6358;--ink:#172852;--muted:#687791;--line:#dce4ef;--paper:#fff;--bg:#f2f6fb;--safe-bottom:env(safe-area-inset-bottom,0px)}
+    *{box-sizing:border-box}html,body{margin:0;min-height:100%;background:var(--bg);color:var(--ink);font-family:"IBM Plex Sans KR","Noto Sans KR",system-ui,sans-serif}button,select{font:inherit}.shell{width:min(560px,100%);min-height:100vh;margin:auto;background:var(--bg);padding-bottom:calc(34px + var(--safe-bottom))}
+    .top{display:flex;align-items:center;justify-content:space-between;height:62px;padding:0 19px;background:#fff;border-bottom:1px solid var(--line)}.brand{display:flex;align-items:center;gap:10px;font-weight:900}.brand-mark{display:grid;place-items:center;width:30px;height:30px;border-radius:9px;background:linear-gradient(135deg,var(--coral),#ff9c7f);color:#fff}.brand b{color:var(--coral)}.portal{color:#52617b;text-decoration:none;font-size:13px;font-weight:800}
+    .hero{position:relative;overflow:hidden;margin:18px 16px 0;padding:26px 23px;border-radius:20px;background:linear-gradient(120deg,#123366,#075e73 58%,#159d96);color:#fff;box-shadow:0 16px 34px rgba(18,51,102,.16)}.hero:after{content:"";position:absolute;width:210px;height:210px;right:-86px;top:-105px;border:1px solid #ffffff35;border-radius:50%}.hero small{position:relative;z-index:1;font-weight:850;letter-spacing:.08em}.hero h1{position:relative;z-index:1;margin:9px 0 6px;font-size:29px;letter-spacing:-.055em}.hero p{position:relative;z-index:1;margin:0;color:#ffffffd6;font-size:13px;line-height:1.6}
+    .clock{margin-top:18px;font-size:34px;font-weight:900;letter-spacing:-.04em}.date{color:#ffffffc8;font-size:13px}
+    .content{padding:16px}.card{margin-bottom:13px;padding:20px;border:1px solid var(--line);border-radius:16px;background:var(--paper);box-shadow:0 8px 24px rgba(25,50,94,.05)}.card h2{margin:0 0 8px;font-size:18px}.muted{color:var(--muted);font-size:13px;line-height:1.65}.field{display:grid;gap:7px;margin-top:14px;color:#52617b;font-size:12px;font-weight:850}.field select{width:100%;padding:12px;border:1px solid #cad5e4;border-radius:10px;background:#fff;color:var(--ink)}
+    .status{display:grid;grid-template-columns:1fr auto;gap:12px;align-items:center}.status-pill{display:inline-flex;align-items:center;gap:7px;margin-top:8px;padding:6px 9px;border-radius:99px;background:#edf2fa;color:#53627c;font-size:12px;font-weight:850}.status-pill:before{content:"";width:7px;height:7px;border-radius:50%;background:#8492a8}.status-pill.active{background:#e6f7ef;color:#19714f}.status-pill.active:before{background:#22a76f}.status-time{text-align:right;font-size:12px;color:var(--muted)}.status-time b{display:block;margin-top:4px;color:var(--ink);font-size:18px}
+    .actions{display:grid;grid-template-columns:1fr 1fr;gap:11px;margin-top:18px}.action{min-height:64px;border:0;border-radius:13px;color:#fff;font-weight:900;cursor:pointer;box-shadow:0 8px 18px rgba(21,49,95,.15)}.action.in{background:var(--navy)}.action.out{background:var(--coral)}.action:disabled{cursor:not-allowed;opacity:.42;box-shadow:none}.action small{display:block;margin-top:4px;color:#ffffffc7;font-size:10px;font-weight:700}
+    .location{display:flex;gap:10px;align-items:flex-start;margin-top:15px;padding:12px;border-radius:11px;background:#f6f8fc;color:#63718a;font-size:12px;line-height:1.55}.location i{flex:0 0 auto;width:9px;height:9px;margin-top:4px;border:2px solid var(--teal);border-radius:50%}.location strong{color:var(--ink)}
+    .history{display:grid;gap:0;margin-top:10px}.history-row{display:grid;grid-template-columns:80px 1fr auto;gap:10px;align-items:center;padding:12px 0;border-top:1px solid #e8edf4;font-size:13px}.history-row time{color:#62718a}.history-row b{font-size:13px}.history-row span{text-align:right;color:#65738a;font-size:12px}.empty{padding:18px 0;color:#718098;text-align:center;font-size:13px}
+    .install,.correct{display:none;width:100%;margin-top:12px;padding:12px;border:1px solid #bdc9da;border-radius:10px;background:#fff;color:var(--ink);font-weight:850}.install.show,.correct.show{display:block}.correct{border-color:#efb7ae;background:#fff8f6;color:#a44439}.notice{min-height:20px;margin:12px 0 0;color:#b34035;font-size:12px;line-height:1.5}.privacy{padding:2px 4px;color:#7a879b;font-size:11px;line-height:1.65}.loading{position:fixed;inset:0;z-index:10;display:none;place-items:center;background:#1728525e}.loading.show{display:grid}.loading div{padding:17px 21px;border-radius:13px;background:#fff;color:var(--ink);font-size:13px;font-weight:850;box-shadow:0 18px 45px #17285244}
+    @media(max-width:380px){.actions{grid-template-columns:1fr}.hero h1{font-size:25px}.clock{font-size:30px}}
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <header class="top"><div class="brand"><span class="brand-mark">J</span><span>all hands <b>JOB</b></span></div><a class="portal" href="/worker.html">내 정보</a></header>
+    <section class="hero"><small>출퇴근 기록</small><h1>오늘도 안전하게 근무하세요</h1><p>출근과 퇴근을 누르면 현재 위치와 시간이 운영관리 근태에 바로 기록됩니다.</p><div class="clock" id="clock">--:--:--</div><div class="date" id="today">날짜 확인 중</div></section>
+    <div class="content">
+      <section class="card">
+        <h2>근무 현장</h2>
+        <p class="muted">배치된 현장이 여러 곳이면 오늘 근무할 현장을 선택해 주세요.</p>
+        <label class="field">근무지<select id="assignment"></select></label>
+      </section>
+      <section class="card">
+        <div class="status"><div><h2>오늘의 근태</h2><span class="status-pill" id="statusPill">기록 전</span></div><div class="status-time"><span>최근 기록</span><b id="lastTime">-</b></div></div>
+        <div class="actions"><button class="action in" id="checkIn">출근하기<small>GPS와 현재 시간 기록</small></button><button class="action out" id="checkOut">퇴근하기<small>근무시간 자동 계산</small></button></div>
+        <div class="location" id="locationInfo"><i></i><div><strong>위치 확인 대기</strong><br>버튼을 누를 때만 현재 위치를 확인합니다.</div></div>
+        <p class="notice" id="message"></p>
+        <button class="correct" id="correct">근무지 GPS 보정</button>
+        <button class="install" id="install">휴대폰 홈 화면에 설치하기</button>
+      </section>
+      <section class="card"><h2>최근 출퇴근</h2><div class="history" id="history"><div class="empty">기록을 불러오는 중입니다.</div></div></section>
+      <p class="privacy">위치정보는 출근·퇴근 버튼을 누른 시점에만 근태 확인 목적으로 저장되며, 지속적으로 추적하지 않습니다. 현장 위치가 등록되지 않았거나 반경 밖에서 기록하면 담당자 확인 대상으로 표시됩니다.</p>
+    </div>
+  </main>
+  <div class="loading" id="loading"><div>현재 위치와 시간을 기록하고 있습니다.</div></div>
+  <script>
+    const $=selector=>document.querySelector(selector),assignment=$('#assignment'),message=$('#message'),loading=$('#loading');
+    let items=[],deferredInstall=null;
+    const clean=value=>String(value??''),esc=value=>clean(value).replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
+    const kstDate=value=>new Intl.DateTimeFormat('ko-KR',{timeZone:'Asia/Seoul',year:'numeric',month:'2-digit',day:'2-digit'}).format(value);
+    const kstTime=value=>new Intl.DateTimeFormat('ko-KR',{timeZone:'Asia/Seoul',hour:'2-digit',minute:'2-digit',hour12:false}).format(value);
+    function tick(){const now=new Date();$('#clock').textContent=new Intl.DateTimeFormat('ko-KR',{timeZone:'Asia/Seoul',hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false}).format(now);$('#today').textContent=new Intl.DateTimeFormat('ko-KR',{timeZone:'Asia/Seoul',year:'numeric',month:'long',day:'numeric',weekday:'long'}).format(now)}
+    function selected(){return items.find(item=>String(item.id)===assignment.value)||items[0]}
+    function records(item){return Array.isArray(item?.employer_note?.workerAttendance)?item.employer_note.workerAttendance:[]}
+    function render(){const item=selected();if(!item)return;const rows=records(item).slice().sort((a,b)=>clean(b.workDate).localeCompare(clean(a.workDate))),open=rows.find(row=>row.checkInAt&&!row.checkOutAt),today=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Seoul'}).format(new Date()),current=rows.find(row=>row.workDate===today)||open,latestStatus=rows[0]?.checkOutLocation?.status||rows[0]?.checkInLocation?.status||'',needsCorrection=Boolean(item.employer_note?.operation?.worksiteGeo?.needsConfirmation)||/확인 필요|미등록|최초/.test(latestStatus);$('#statusPill').textContent=open?'근무 중':current?.checkOutAt?'퇴근 완료':'기록 전';$('#statusPill').classList.toggle('active',Boolean(open));$('#lastTime').textContent=current?.checkOutAt?kstTime(new Date(current.checkOutAt)):current?.checkInAt?kstTime(new Date(current.checkInAt)):'-';$('#checkIn').disabled=Boolean(open);$('#checkOut').disabled=!open;$('#correct').classList.toggle('show',needsCorrection);$('#history').innerHTML=rows.slice(0,7).map(row=>`<div class="history-row"><time>${esc(row.workDate?.slice(5)||'-')}</time><b>${row.checkInAt?esc(kstTime(new Date(row.checkInAt))):'-'} → ${row.checkOutAt?esc(kstTime(new Date(row.checkOutAt))):'근무 중'}</b><span>${esc(row.checkOutLocation?.status||row.checkInLocation?.status||'담당자 확인')}</span></div>`).join('')||'<div class="empty">아직 출퇴근 기록이 없습니다.</div>'}
+    async function load(){const response=await fetch('/api/worker-portal',{cache:'no-store'});if(response.status===401){location.href='/worker.html';return}const data=await response.json();if(!response.ok)throw new Error(data.error||'근무 정보를 불러오지 못했습니다.');items=data.items||[];if(!items.length){assignment.innerHTML='<option>배치된 근무지가 없습니다</option>';$('#checkIn').disabled=$('#checkOut').disabled=true;message.textContent='운영회원 기업의 근무지에 배치된 뒤 이용할 수 있습니다.';return}assignment.innerHTML=items.map(item=>`<option value="${item.id}">${esc(item.client_name||item.job_data?.clientName||item.job_title||'근무지')}</option>`).join('');render()}
+    function position(){return new Promise((resolve,reject)=>{if(!navigator.geolocation)return reject(new Error('이 기기에서는 위치 확인을 지원하지 않습니다.'));navigator.geolocation.getCurrentPosition(resolve,error=>reject(new Error(error.code===1?'위치 권한을 허용해 주세요.':'현재 위치를 확인하지 못했습니다. 잠시 후 다시 시도해 주세요.')),{enableHighAccuracy:true,timeout:15000,maximumAge:0})})}
+    async function clock(event){const item=selected();if(!item)return;message.textContent='';loading.classList.add('show');try{const point=await position(),coords=point.coords,response=await fetch('/api/worker-portal',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'attendance-clock',applicationId:Number(item.id),event,latitude:coords.latitude,longitude:coords.longitude,accuracy:coords.accuracy})}),out=await response.json();if(!response.ok)throw new Error(out.error||'근태를 기록하지 못했습니다.');$('#locationInfo').innerHTML=`<i></i><div><strong>${esc(out.locationStatus)}</strong><br>${out.distanceMeters===null?'현장 위치 등록 전 · 담당자가 확인합니다.':`현장 기준 약 ${Number(out.distanceMeters).toLocaleString()}m · GPS 오차 약 ${Math.round(coords.accuracy)}m`}</div>`;message.style.color='#17714f';message.textContent=out.message;await load()}catch(error){message.style.color='#b34035';message.textContent=error.message}finally{loading.classList.remove('show')}}
+    $('#checkIn').onclick=()=>clock('check-in');$('#checkOut').onclick=()=>clock('check-out');assignment.onchange=render;setInterval(tick,1000);tick();load().catch(error=>message.textContent=error.message);
+    $('#correct').onclick=async()=>{const item=selected();if(!item)return;message.textContent='';loading.classList.add('show');try{const point=await position(),coords=point.coords,response=await fetch('/api/worker-portal',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'attendance-location-correct',applicationId:Number(item.id),latitude:coords.latitude,longitude:coords.longitude,accuracy:coords.accuracy})}),out=await response.json();if(!response.ok)throw new Error(out.error||'현장 위치를 보정하지 못했습니다.');message.style.color='#17714f';message.textContent=out.message;await load()}catch(error){message.style.color='#b34035';message.textContent=error.message}finally{loading.classList.remove('show')}};
+    window.addEventListener('beforeinstallprompt',event=>{event.preventDefault();deferredInstall=event;$('#install').classList.add('show')});$('#install').onclick=async()=>{if(deferredInstall){deferredInstall.prompt();await deferredInstall.userChoice;deferredInstall=null;$('#install').classList.remove('show')}else{message.style.color='#52617b';message.textContent='iPhone은 Safari의 공유 버튼에서 “홈 화면에 추가”를 선택해 주세요.'}};
+    if('serviceWorker'in navigator)window.addEventListener('load',()=>navigator.serviceWorker.register('/attendance-sw.js'));
+  </script>
+</body>
+</html>
+

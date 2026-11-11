@@ -14,6 +14,17 @@
 
   function prepare() {
     document.querySelectorAll('[data-attendance] .day select').forEach(addNormalStatus);
+    const back = document.querySelector('.top .back');
+    if (back && !document.querySelector('.top [data-attendance-app-link]')) {
+      const link = document.createElement('a');
+      link.className = 'back';
+      link.href = '/attendance.html';
+      link.dataset.attendanceAppLink = 'true';
+      link.textContent = '출퇴근 앱';
+      link.style.marginLeft = 'auto';
+      back.style.marginLeft = '0';
+      back.before(link);
+    }
   }
 
   document.addEventListener('change', event => {
@@ -26,3 +37,4 @@
   new MutationObserver(prepare).observe(document.documentElement, { childList: true, subtree: true });
   document.addEventListener('DOMContentLoaded', prepare);
 })();
+

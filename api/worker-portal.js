@@ -4,6 +4,28 @@ const clean = value => String(value || '').trim();
 const attendanceStatuses = ['정상근무', '출근', '지각', '결근', '휴무'];
 const companyScoreKeys = ['payAccuracy', 'payTimeliness', 'conditionMatch', 'communication', 'safety'];
 
+function seoulDate(value = new Date()) {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Seoul', year: 'numeric', month: '2-digit', day: '2-digit'
+  }).formatToParts(value);
+  const pick = type => parts.find(part => part.type === type)?.value || '';
+  return `${pick('year')}-${pick('month')}-${pick('day')}`;
+}
+
+function finiteNumber(value) {
+  const number = Number(value);
+  return Number.isFinite(number) ? number : null;
+}
+
+function distanceMeters(lat1, lon1, lat2, lon2) {
+  const rad = value => value * Math.PI / 180;
+  const earth = 6371000;
+  const dLat = rad(lat2 - lat1);
+  const dLon = rad(lon2 - lon1);
+  const a = Math.sin(dLat / 2) ** 2 + Math.cos(rad(lat1)) * Math.cos(rad(lat2)) * Math.sin(dLon / 2) ** 2;
+  return Math.round(earth * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)));
+}
+
 function scoreValue(value) {
   const number = Number(value);
   return Number.isInteger(number) && number >= 1 && number <= 5 ? number : null;
@@ -11,7 +33,7 @@ function scoreValue(value) {
 
 async function applications(db, workerId) {
   return db.query(
-    "SELECT a.id,a.job_id,a.job_title,a.status,a.employer_note,j.data AS job_data,c.data AS company_data FROM allhands_job_applications a JOIN allhands_job_posts j ON a.job_id='db-'||j.id::text JOIN allhands_signup_applications c ON c.id=NULLIF(j.data->>'ownerCompanyId','')::BIGINT WHERE a.worker_data->>'memberId'=$1 AND COALESCE(a.employer_note->'operation'->>'assignmentDate','')<>'' AND c.kind='company' AND c.status='active' AND c.data->>'membershipTier'='operations' ORDER BY a.created_at DESC",
+    "SELECT a.id,a.job_id,a.job_title,a.status,a.worker_data,a.employer_note,j.data AS job_data,c.data AS company_data FROM allhands_job_applications a JOIN allhands_job_posts j ON a.job_id='db-'||j.id::text JOIN allhands_signup_applications c ON c.id=NULLIF(j.data->>'ownerCompanyId','')::BIGINT WHERE a.worker_data->>'memberId'=$1 AND COALESCE(a.employer_note->'operation'->>'assignmentDate','')<>'' AND c.kind='company' AND c.status='active' AND c.data->>'membershipTier'='operations' ORDER BY a.created_at DESC",
     [String(workerId)]
   );
 }
@@ -107,6 +129,140 @@ module.exports = async (req, res) => {
       return res.status(200).json({ ok: true, message: '근태를 저장했고 기업 담당자에게 전달했습니다.' });
     }
 
+    if (input.action === 'attendance-clock') {
+      const event = clean(input.event);
+      if (!['check-in', 'check-out'].includes(event)) return res.status(400).json({ error: '출근 또는 퇴근을 선택해 주세요.' });
+      const latitude = finiteNumber(input.latitude);
+      const longitude = finiteNumber(input.longitude);
+      const accuracy = finiteNumber(input.accuracy);
+      if (latitude === null || longitude === null || latitude < -90 || latitude > 90 || longitude < -180 || longitude > 180) {
+        return res.status(400).json({ error: '현재 위치를 확인한 뒤 다시 시도해 주세요.' });
+      }
+
+      const now = new Date();
+      const nowIso = now.toISOString();
+      const today = seoulDate(now);
+      const operation = { ...(previous.operation || {}) };
+      let siteLatitude = finiteNumber(operation.worksiteLatitude ?? operation.worksiteGeo?.latitude ?? target.job_data?.worksiteLatitude);
+      let siteLongitude = finiteNumber(operation.worksiteLongitude ?? operation.worksiteGeo?.longitude ?? target.job_data?.worksiteLongitude);
+      const radius = Math.max(50, Math.min(2000, finiteNumber(operation.worksiteRadius ?? operation.worksiteGeo?.radius) || 200));
+      let hasWorksite = siteLatitude !== null && siteLongitude !== null;
+      let firstLocation = false;
+      if (!hasWorksite && event === 'check-in') {
+        siteLatitude = latitude;
+        siteLongitude = longitude;
+        hasWorksite = true;
+        firstLocation = true;
+        operation.worksiteLatitude = latitude;
+        operation.worksiteLongitude = longitude;
+        operation.worksiteRadius = radius;
+        operation.worksiteGeo = { latitude, longitude, radius, source: 'worker-first-check-in', needsConfirmation: true, updatedAt: nowIso };
+      }
+      const distance = hasWorksite ? distanceMeters(latitude, longitude, siteLatitude, siteLongitude) : null;
+      const locationStatus = firstLocation ? '최초 현장 위치 등록' : !hasWorksite ? '현장 위치 미등록' : accuracy !== null && accuracy > 250 ? 'GPS 정확도 확인 필요' : distance <= radius ? '현장 확인' : '현장 밖 확인 필요';
+      const location = { latitude, longitude, accuracy: accuracy === null ? null : Math.round(accuracy), distanceMeters: distance, status: locationStatus, recordedAt: nowIso };
+
+      const old = Array.isArray(previous.workerAttendance) ? previous.workerAttendance : [];
+      const openIndex = [...old].reverse().findIndex(row => row?.checkInAt && !row?.checkOutAt);
+      const actualOpenIndex = openIndex < 0 ? -1 : old.length - 1 - openIndex;
+      let workDate = today;
+      let record;
+      if (event === 'check-in') {
+        if (actualOpenIndex >= 0) return res.status(409).json({ error: '이미 출근 처리되어 있습니다. 먼저 퇴근을 기록해 주세요.' });
+        record = { workDate, attendance: '출근', normalHours: 0, overtimeHours: 0, checkInAt: nowIso, checkInLocation: location, reportedAt: nowIso, source: 'attendance-app' };
+      } else {
+        if (actualOpenIndex < 0) return res.status(409).json({ error: '출근 기록이 없습니다. 출근부터 기록해 주세요.' });
+        const open = old[actualOpenIndex];
+        workDate = clean(open.workDate) || today;
+        const hours = Math.max(0, Math.min(24, (now.getTime() - new Date(open.checkInAt).getTime()) / 3600000));
+        record = { ...open, attendance: '출근', normalHours: Math.round(Math.min(8, hours) * 10) / 10, overtimeHours: Math.round(Math.max(0, hours - 8) * 10) / 10, checkOutAt: nowIso, checkOutLocation: location, reportedAt: nowIso, source: 'attendance-app' };
+      }
+
+      const workerAttendance = event === 'check-in'
+        ? [...old.filter(row => clean(row?.workDate) !== workDate), record]
+        : old.map((row, index) => index === actualOpenIndex ? record : row);
+      const month = workDate.slice(0, 7);
+      const day = String(Number(workDate.slice(8, 10)));
+      const calendar = operation.attendanceCalendar || { months: {}, closedMonths: {} };
+      const months = { ...(calendar.months || {}) };
+      const monthData = { ...(months[month] || {}) };
+      const days = { ...(monthData.days || {}) };
+      const verified = locationStatus === '현장 확인' && (!record.checkInLocation || record.checkInLocation.status === '현장 확인');
+      days[day] = {
+        ...(days[day] || {}),
+        basic: record.normalHours,
+        overtime: record.overtimeHours,
+        night: Number(days[day]?.night) || 0,
+        checkInAt: record.checkInAt || '',
+        checkOutAt: record.checkOutAt || '',
+        locationVerified: verified,
+        attendanceStatus: verified ? 'GPS 확인' : locationStatus,
+        source: 'attendance-app'
+      };
+      months[month] = { ...monthData, days };
+      operation.attendanceCalendar = { ...calendar, months };
+      await db.query(
+        'UPDATE allhands_job_applications SET employer_note=$1::jsonb WHERE id=$2',
+        [JSON.stringify({ ...previous, operation, workerAttendance }), target.id]
+      );
+      return res.status(200).json({
+        ok: true,
+        message: `${event === 'check-in' ? '출근' : '퇴근'} 기록을 저장했습니다.`,
+        record,
+        locationStatus,
+        distanceMeters: distance,
+        serverTime: nowIso
+      });
+    }
+
+    if (input.action === 'attendance-location-correct') {
+      const latitude = finiteNumber(input.latitude);
+      const longitude = finiteNumber(input.longitude);
+      const accuracy = finiteNumber(input.accuracy);
+      if (latitude === null || longitude === null || latitude < -90 || latitude > 90 || longitude < -180 || longitude > 180) {
+        return res.status(400).json({ error: '현재 위치를 확인한 뒤 다시 시도해 주세요.' });
+      }
+      if (accuracy !== null && accuracy > 250) return res.status(400).json({ error: 'GPS 오차가 큽니다. 실외 또는 창가에서 다시 시도해 주세요.' });
+      const workerAttendance = Array.isArray(previous.workerAttendance) ? [...previous.workerAttendance] : [];
+      const needsCorrection = workerAttendance.slice(-10).some(row => {
+        const status = row?.checkOutLocation?.status || row?.checkInLocation?.status || '';
+        return status.includes('확인 필요') || status.includes('미등록') || status.includes('최초');
+      }) || previous.operation?.worksiteGeo?.needsConfirmation;
+      if (!needsCorrection) return res.status(409).json({ error: '현재는 위치 보정이 필요한 기록이 없습니다.' });
+      const nowIso = new Date().toISOString();
+      const operation = { ...(previous.operation || {}) };
+      const radius = Math.max(50, Math.min(2000, finiteNumber(operation.worksiteRadius ?? operation.worksiteGeo?.radius) || 200));
+      operation.worksiteLatitude = latitude;
+      operation.worksiteLongitude = longitude;
+      operation.worksiteRadius = radius;
+      operation.worksiteGeo = {
+        latitude,
+        longitude,
+        radius,
+        source: 'worker-correction',
+        needsConfirmation: false,
+        correctedByWorker: String(worker.id),
+        correctedAt: nowIso,
+        updatedAt: nowIso
+      };
+      const pendingIndex = [...workerAttendance].reverse().findIndex(row => {
+        const status = row?.checkOutLocation?.status || row?.checkInLocation?.status || '';
+        return status.includes('확인 필요') || status.includes('미등록') || status.includes('최초');
+      });
+      if (pendingIndex >= 0) {
+        const index = workerAttendance.length - 1 - pendingIndex;
+        const row = { ...workerAttendance[index], locationCorrectedAt: nowIso };
+        if (row.checkOutLocation) row.checkOutLocation = { ...row.checkOutLocation, status: '근무지 GPS 보정 완료' };
+        else if (row.checkInLocation) row.checkInLocation = { ...row.checkInLocation, status: '근무지 GPS 보정 완료' };
+        workerAttendance[index] = row;
+      }
+      await db.query(
+        'UPDATE allhands_job_applications SET employer_note=$1::jsonb WHERE id=$2',
+        [JSON.stringify({ ...previous, operation, workerAttendance }), target.id]
+      );
+      return res.status(200).json({ ok: true, message: '선택한 근무지의 GPS 기준을 현재 위치로 보정했습니다. 다음 출퇴근부터 새 기준을 적용합니다.' });
+    }
+
     if (input.action === 'contract-sign') {
       const documentId = Number(input.documentId);
       const signature = clean(input.signature).slice(0, 80);
@@ -147,4 +303,5 @@ module.exports = async (req, res) => {
     return res.status(500).json({ error: '개인 운영관리 정보를 처리하지 못했습니다.' });
   }
 };
+
 
