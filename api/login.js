@@ -52,7 +52,12 @@ module.exports = async (req, res) => {
       const targetPayload = Buffer.from(JSON.stringify(session.role === 'admin' ? { role:'admin', expires:Date.now()+28800000 } : { role:session.role, id:session.id, expires:Date.now()+(session.role==='worker'?2592000000:86400000) })).toString('base64url');
       const maxAge=session.role === 'admin' ? 28800 : session.role === 'worker' ? 2592000 : 86400;
       const sessionCookie=`${cookieName}=${targetPayload}.${sign(targetPayload, process.env.ADMIN_SESSION_SECRET)}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=${maxAge}`;
-      res.setHeader('Set-Cookie', session.role === 'worker' ? [sessionCookie,'allhands_admin=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0','allhands_company=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0'] : sessionCookie);
+      const clearCookies = {
+        admin: ['allhands_company=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0','allhands_worker=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0'],
+        company: ['allhands_admin=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0','allhands_worker=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0'],
+        worker: ['allhands_admin=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0','allhands_company=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0']
+      };
+      res.setHeader('Set-Cookie', [sessionCookie, ...clearCookies[session.role]]);
       const workerTarget = req.query?.next === 'attendance' ? '/attendance.html' : '/worker.html';
       res.setHeader('Location', session.role === 'worker' ? workerTarget : '/');
       return res.status(302).end();
