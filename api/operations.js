@@ -1,528 +1,134 @@
-const crypto = require('crypto');
-const { ensureTables, valid, body, errorKind } = require('./_auth.cjs');
-const documentValidation = require('../document-validation.js');
-
-function operationPhotoUrl(pathname, companyId, admin) {
-  const secret = process.env.OPERATIONS_SSO_SECRET;
-  if (!secret || !pathname) return '';
-  const payload = Buffer.from(JSON.stringify({ pathname, companyId: companyId || '', admin: Boolean(admin), expires: Date.now() + 10 * 60 * 1000 })).toString('base64url');
-  const signature = crypto.createHmac('sha256', secret).update(payload).digest('base64url');
-  return `https://allhands-job.vercel.app/api/file-view?pathname=${encodeURIComponent(pathname)}&operationsToken=${payload}.${signature}`;
-}
-
-module.exports = async (req, res) => {
-  try {
-    const admin = valid(req, 'allhands_admin');
-    const company = valid(req, 'allhands_company', 'company');
-    if (!admin && !company) return res.status(401).json({ error: 'ìš´ì˜ê´€ë¦¬ ì‚¬ì´íŠ¸ì—ì„œ ê¸°ì—… ë˜ëŠ” ê´€ë¦¬ìž ë¡œê·¸ì¸ì´ í•„ìš”í•©ë‹ˆë‹¤.' });
-
-    const db = await ensureTables();
-    const ownerCompanyId = company ? String(company.id) : null;
-    if (company) {
-      const memberships = await db.query("SELECT data FROM allhands_signup_applications WHERE id=$1 AND kind='company' AND status='active' LIMIT 1", [Number(company.id)]);
-      if (memberships[0]?.data?.membershipTier !== 'operations') return res.status(403).json({ error: 'ìš´ì˜ê´€ë¦¬íšŒì› ê¶Œí•œì´ í•„ìš”í•©ë‹ˆë‹¤. ì˜¬í•¸ìž¡ ê´€ë¦¬ìžì—ê²Œ ìš´ì˜ê´€ë¦¬íšŒì› ìŠ¹ì¸ì„ ìš”ì²­í•´ ì£¼ì„¸ìš”.' });
-    }
-
-    if (req.method === 'POST') {
-      const input = body(req);
-      if (input.action === 'worker-attendance-invite') {
-        const applicationId = Number(input.applicationId);
-        if (!Number.isSafeInteger(applicationId)) return res.status(400).json({ error: 'ê·¼ë¡œìž ì •ë³´ë¥¼ í™•ì¸í•´ ì£¼ì„¸ìš”.' });
-        const people = await db.query(
-          admin
-            ? "SELECT a.id,a.worker_data,a.employer_note,j.data AS job_data FROM allhands_job_applications a JOIN allhands_job_posts j ON a.job_id='db-'||j.id::text WHERE a.id=$1"
-            : "SELECT a.id,a.worker_data,a.employer_note,j.data AS job_data FROM allhands_job_applications a JOIN allhands_job_posts j ON a.job_id='db-'||j.id::text WHERE a.id=$1 AND j.data->>'ownerCompanyId'=$2",
-          admin ? [applicationId] : [applicationId, ownerCompanyId]
-        );
-        const person = people[0];
-        const workerId = Number(person?.worker_data?.memberId);
-        const operation = person?.employer_note?.operation || {};
-        if (!person) return res.status(404).json({ error: 'ê¶Œí•œì´ ì—†ê±°ë‚˜ ê·¼ë¡œìžë¥¼ ì°¾ì§€ ëª»í–ˆìŠµë‹ˆë‹¤.' });
-        if (!Number.isSafeInteger(workerId)) return res.status(400).json({ error: 'ì˜¬í•¸ìž¡ êµ¬ì§íšŒì›ê³¼ ì—°ê²°ëœ ê·¼ë¡œìžë§Œ ì¶œí‡´ê·¼ ì•± ë§í¬ë¥¼ ë§Œë“¤ ìˆ˜ ìžˆìŠµë‹ˆë‹¤.' });
-        if (!String(operation.assignmentDate || '').trim() || String(operation.resignationDate || '').trim()) return res.status(400).json({ error: 'í˜„ìž¬ ê·¼ë¬´ì§€ì— ë°°ì¹˜ëœ ê·¼ë¡œìžë§Œ ë§í¬ë¥¼ ë§Œë“¤ ìˆ˜ ìžˆìŠµë‹ˆë‹¤.' });
-        const workers = await db.query("SELECT id,data FROM allhands_signup_applications WHERE id=$1 AND kind='worker' AND status='active' LIMIT 1", [workerId]);
-        if (!workers[0]) return res.status(404).json({ error: 'í™œì„± ìƒíƒœì¸ êµ¬ì§íšŒì› ì •ë³´ë¥¼ ì°¾ì§€ ëª»í–ˆìŠµë‹ˆë‹¤.' });
-        const token = crypto.randomBytes(32).toString('base64url');
-        const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
-        const now = new Date().toISOString();
-        const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
-        const invitationOwnerId = ownerCompanyId || String(person.job_data?.ownerCompanyId || '');
-        const invitation = {
-          applicationId: String(applicationId), workerId: String(workerId),
-          workerName: String(person.worker_data?.name || workers[0].data?.name || 'ê·¼ë¡œìž').slice(0, 120),
-          tokenHash, createdAt: now, expiresAt, usedAt: ''
-        };
-        await db.query(
-          "UPDATE allhands_operation_documents SET data=jsonb_set(data,'{revokedAt}',to_jsonb($1::text),true),updated_at=NOW() WHERE document_type='worker-attendance-invite' AND owner_company_id=$2 AND data->>'applicationId'=$3 AND COALESCE(data->>'usedAt','')=''",
-          [now, invitationOwnerId, String(applicationId)]
-        );
-        await db.query(
-          'INSERT INTO allhands_operation_documents (owner_company_id,document_type,data) VALUES ($1,$2,$3::jsonb)',
-          [invitationOwnerId, 'worker-attendance-invite', JSON.stringify(invitation)]
-        );
-        const host = String(req.headers['x-forwarded-host'] || req.headers.host || 'allhands-operations.vercel.app').split(',')[0].trim();
-        const protocol = String(req.headers['x-forwarded-proto'] || 'https').split(',')[0].trim() || 'https';
-        return res.status(201).json({ ok: true, inviteUrl: `${protocol}://${host}/api/login?invite=${encodeURIComponent(token)}`, expiresAt });
-      }
-      if (input.action === 'external-approval-create') {
-        const documentId = Number(input.documentId);
-        const recipientName = String(input.recipientName || '').trim().slice(0, 120);
-        const recipientEmail = String(input.recipientEmail || '').trim().toLowerCase().slice(0, 254);
-        if (!documentId || !recipientName || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(recipientEmail)) return res.status(400).json({ error: 'ê²€í†  ë‹´ë‹¹ìž ì´ë¦„ê³¼ ì˜¬ë°”ë¥¸ ì´ë©”ì¼ ì£¼ì†Œë¥¼ ìž…ë ¥í•´ ì£¼ì„¸ìš”.' });
-        const documents = await db.query(
-          admin
-            ? "SELECT id,document_type,data FROM allhands_operation_documents WHERE id=$1 AND document_type IN ('invoice','payroll-calculation')"
-            : "SELECT id,document_type,data FROM allhands_operation_documents WHERE id=$1 AND owner_company_id=$2 AND document_type IN ('invoice','payroll-calculation')",
-          admin ? [documentId] : [documentId, ownerCompanyId]
-        );
-        const documentRow = documents[0];
-        if (!documentRow) return res.status(404).json({ error: 'ê²€í†  ìš”ì²­ì„ ë³´ë‚¼ ì²­êµ¬ì„œ ë˜ëŠ” ê¸‰ì—¬ì •ì‚° ë¬¸ì„œë¥¼ ì°¾ì§€ ëª»í–ˆìŠµë‹ˆë‹¤.' });
-        const token = crypto.randomBytes(32).toString('base64url');
-        const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
-        const now = new Date().toISOString();
-        const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
-        const event = [{ type: 'created', label: 'ê²€í†  ìš”ì²­ ìƒì„±', at: now, actor: admin ? 'ìš´ì˜ ê´€ë¦¬ìž' : 'ê¸°ì—… ìš´ì˜ë‹´ë‹¹ìž' }];
-        const saved = await db.query(
-          'INSERT INTO allhands_external_approvals (owner_company_id,document_id,document_type,recipient_name,recipient_email,access_token_hash,document_snapshot,events,expires_at) VALUES ($1,$2,$3,$4,$5,$6,$7::jsonb,$8::jsonb,$9) RETURNING id,expires_at',
-          [ownerCompanyId, documentRow.id, documentRow.document_type, recipientName, recipientEmail, tokenHash, JSON.stringify(documentRow.data || {}), JSON.stringify(event), expiresAt]
-        );
-        const host = String(req.headers['x-forwarded-host'] || req.headers.host || 'allhands-operations.vercel.app').split(',')[0].trim();
-        const protocol = String(req.headers['x-forwarded-proto'] || 'https').split(',')[0].trim() || 'https';
-        return res.status(201).json({ ok: true, id: saved[0].id, approvalUrl: `${protocol}://${host}/approval.html?token=${encodeURIComponent(token)}`, expiresAt: saved[0].expires_at });
-      }
-      if (input.action === 'workflow-notify') {
-        const appId = Number(input.applicationId);
-        const step = String(input.step || '').trim();
-        const steps = ['resume_request', 'interview_notice', 'start_notice'];
-        if (!appId || !steps.includes(step)) return res.status(400).json({ error: 'ì§„í–‰í•  ë‹¨ê³„ë¥¼ í™•ì¸í•´ ì£¼ì„¸ìš”.' });
-
-        const rows = await db.query(
-          admin
-            ? 'SELECT id,job_title,worker_data,status,employer_note FROM allhands_job_applications WHERE id=$1'
-            : "SELECT a.id,a.job_title,a.worker_data,a.status,a.employer_note FROM allhands_job_applications a JOIN allhands_job_posts j ON a.job_id='db-'||j.id::text WHERE a.id=$1 AND j.data->>'ownerCompanyId'=$2",
-          admin ? [appId] : [appId, ownerCompanyId]
-        );
-        const application = rows[0];
-        if (!application) return res.status(404).json({ error: 'ê¶Œí•œì´ ì—†ê±°ë‚˜ ì§€ì›ìžë¥¼ ì°¾ì§€ ëª»í–ˆìŠµë‹ˆë‹¤.' });
-
-        const previous = application.employer_note || {};
-        const legacyStatus = String(application.status || '');
-        const current = ['resume_request', 'interview_notice', 'start_notice'].includes(previous.workflowStage)
-          ? previous.workflowStage
-          : (/ìž…ì‚¬ì¼|í•©ê²©/.test(legacyStatus) ? 'start_notice' : (/ë©´ì ‘ ì¼ì •|ë©´ì ‘ì¼ í†µë³´/.test(legacyStatus) ? 'interview_notice' : (/ë©´ì ‘|ì´ë ¥ì„œ ìš”ì²­/.test(legacyStatus) ? 'resume_request' : 'application')));
-        const required = { resume_request: 'application', interview_notice: 'resume_request', start_notice: 'interview_notice' };
-        if (current !== required[step]) return res.status(400).json({ error: 'ì´ì „ ë‹¨ê³„ë¥¼ ë¨¼ì € ì²˜ë¦¬í•´ ì£¼ì„¸ìš”.' });
-
-        const interviewAt = String(input.interviewAt || '').trim().slice(0, 80);
-        const interviewPlace = String(input.interviewPlace || '').trim().slice(0, 500);
-        const startDate = String(input.startDate || '').trim().slice(0, 30);
-        if (step === 'interview_notice' && (!interviewAt || !interviewPlace)) return res.status(400).json({ error: 'ë©´ì ‘ ì¼ì‹œì™€ ìž¥ì†Œë¥¼ ìž…ë ¥í•´ ì£¼ì„¸ìš”.' });
-        if (step === 'start_notice' && !startDate) return res.status(400).json({ error: 'ìž…ì‚¬ì¼ì„ ìž…ë ¥í•´ ì£¼ì„¸ìš”.' });
-
-        const now = new Date().toISOString();
-        const labels = { resume_request: 'ì´ë ¥ì„œ ìš”ì²­', interview_notice: 'ë©´ì ‘ì¼ í†µë³´', start_notice: 'ìž…ì‚¬ì¼ í†µë³´' };
-        const history = Array.isArray(previous.workflowHistory) ? previous.workflowHistory : [];
-        const interview = step === 'interview_notice'
-          ? { ...(previous.interview || {}), interviewAt, interviewPlace, requestedAt: now, resumeRequested: true }
-          : (previous.interview || {});
-        const note = {
-          ...previous,
-          workflowStage: step,
-          workflowHistory: [...history, { step, label: labels[step], sentAt: now, interviewAt: step === 'interview_notice' ? interviewAt : undefined, startDate: step === 'start_notice' ? startDate : undefined }],
-          interview,
-          resumeRequested: step !== 'resume_request' ? previous.resumeRequested : true,
-          startDate: step === 'start_notice' ? startDate : previous.startDate
-        };
-        const status = step === 'start_notice' ? 'ìž…ì‚¬ì¼ í†µë³´ Â· í•©ê²©' : labels[step];
-        await db.query('UPDATE allhands_job_applications SET status=$1,employer_note=$2::jsonb WHERE id=$3', [status, JSON.stringify(note), appId]);
-
-        const workerId = Number(application.worker_data?.memberId);
-        if (Number.isSafeInteger(workerId)) {
-          const workers = await db.query("SELECT data FROM allhands_signup_applications WHERE id=$1 AND kind='worker' AND status='active' LIMIT 1", [workerId]);
-          if (workers[0]) {
-            let senderName = 'all hands JOB ê´€ë¦¬ìž';
-            if (company) {
-              const sender = await db.query('SELECT data FROM allhands_signup_applications WHERE id=$1 LIMIT 1', [Number(company.id)]);
-              senderName = String(sender[0]?.data?.companyName || sender[0]?.data?.company || 'ê¸°ì—… íšŒì›');
-            }
-            const messages = {
-              resume_request: `[ì´ë ¥ì„œ ì œì¶œ ìš”ì²­]\n\nê³µê³ : ${application.job_title}\n\në©´ì ‘ ì§„í–‰ì„ ìœ„í•´ ê°„íŽ¸ ì´ë ¥ì„œë¥¼ ìž‘ì„±í•´ ì œì¶œí•´ ì£¼ì„¸ìš”. ë‚´ ì •ë³´ ë©”ë‰´ì˜ ì´ë ¥ì„œ ìž‘ì„±ì—ì„œ ìž‘ì„±í•  ìˆ˜ ìžˆìŠµë‹ˆë‹¤.`,
-              interview_notice: `[ë©´ì ‘ ì¼ì • ì•ˆë‚´]\n\nê³µê³ : ${application.job_title}\nì¼ì‹œ: ${interviewAt}\nìž¥ì†ŒÂ·ë°©ì‹: ${interviewPlace}\n\në©´ì ‘ ì¼ì •ì´ í™•ì •ë˜ì—ˆìŠµë‹ˆë‹¤.`,
-              start_notice: `[ìž…ì‚¬ì¼ ì•ˆë‚´]\n\nê³µê³ : ${application.job_title}\nìž…ì‚¬ì¼: ${startDate}\n\nìž…ì‚¬ ì¼ì •ê³¼ ì¤€ë¹„ì‚¬í•­ì„ í™•ì¸í•´ ì£¼ì„¸ìš”.`
-            };
-            await db.query('INSERT INTO allhands_messages (sender_kind,sender_id,sender_name,recipient_kind,recipient_id,recipient_name,subject,body,attachments) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9::jsonb)', [admin ? 'admin' : 'company', admin ? null : Number(company.id), senderName, 'worker', workerId, String(workers[0].data?.name || application.worker_data?.name || 'êµ¬ì§ìž'), `[${application.job_title}] ${labels[step]}`, messages[step], '[]']);
-          }
-        }
-        return res.status(200).json({ ok: true, message: `${labels[step]}ì„(ë¥¼) ì „ë‹¬í–ˆìŠµë‹ˆë‹¤.` });
-      }
-      if (input.action === 'workflow-outcome') {
-        const appId = Number(input.applicationId);
-        const outcome = String(input.outcome || '').trim();
-        const labels = { document_rejected: 'ì„œë¥˜ ë¶ˆí•©ê²©', interview_rejected: 'ë©´ì ‘ ë¶ˆí•©ê²©', interview_no_show: 'ë©´ì ‘ ë…¸ì‡¼', start_attended: 'ì²« ì¶œê·¼ ì™„ë£Œ', start_no_show: 'ìž…ì‚¬ ë‹¹ì¼ ë¯¸ì¶œê·¼', resigned: 'í‡´ì‚¬ ì²˜ë¦¬' };
-        if (!appId || !labels[outcome]) return res.status(400).json({ error: 'ì²˜ë¦¬í•  ê²°ê³¼ë¥¼ í™•ì¸í•´ ì£¼ì„¸ìš”.' });
-        const rows = await db.query(
-          admin
-            ? 'SELECT id,status,employer_note FROM allhands_job_applications WHERE id=$1'
-            : "SELECT a.id,a.status,a.employer_note FROM allhands_job_applications a JOIN allhands_job_posts j ON a.job_id='db-'||j.id::text WHERE a.id=$1 AND j.data->>'ownerCompanyId'=$2",
-          admin ? [appId] : [appId, ownerCompanyId]
-        );
-        const application = rows[0];
-        if (!application) return res.status(404).json({ error: 'ê¶Œí•œì´ ì—†ê±°ë‚˜ ì§€ì›ìžë¥¼ ì°¾ì§€ ëª»í–ˆìŠµë‹ˆë‹¤.' });
-        const previous = application.employer_note || {};
-        const currentStage = String(previous.workflowStage || (/ìž…ì‚¬ì¼|í•©ê²©/.test(application.status || '') ? 'start_notice' : (/ë©´ì ‘ ì¼ì •|ë©´ì ‘ì¼ í†µë³´/.test(application.status || '') ? 'interview_notice' : (/ë©´ì ‘|ì´ë ¥ì„œ ìš”ì²­/.test(application.status || '') ? 'resume_request' : 'application'))));
-        const allowed = {
-          document_rejected: ['application', 'resume_request'],
-          interview_rejected: ['interview_notice'],
-          interview_no_show: ['interview_notice'],
-          start_attended: ['start_notice'],
-          start_no_show: ['start_notice'],
-          resigned: ['start_notice']
-        };
-        if (!allowed[outcome].includes(currentStage) || (outcome === 'resigned' && !previous.attendanceStartedAt)) return res.status(400).json({ error: 'í˜„ìž¬ ì§„í–‰ ë‹¨ê³„ì—ì„œëŠ” ì´ ì²˜ë¦¬ë¥¼ í•  ìˆ˜ ì—†ìŠµë‹ˆë‹¤.' });
-        const history = Array.isArray(previous.workflowHistory) ? previous.workflowHistory : [];
-        const now = new Date().toISOString();
-        const operation = { ...(previous.operation || {}) };
-        if (outcome === 'start_attended') operation.assignmentDate = String(input.date || now.slice(0, 10)).slice(0, 10);
-        if (outcome === 'resigned') operation.resignationDate = String(input.date || now.slice(0, 10)).slice(0, 10);
-        const terminal = !['start_attended'].includes(outcome);
-        const note = { ...previous, operation, workflowStage: terminal ? 'closed' : 'start_notice', outcome: terminal ? { code: outcome, label: labels[outcome], handledAt: now } : previous.outcome, attendanceStartedAt: outcome === 'start_attended' ? now : previous.attendanceStartedAt, workflowHistory: [...history, { step: outcome, label: labels[outcome], sentAt: now }] };
-        const status = outcome === 'start_attended' ? 'ìž…ì‚¬ì¼ í†µë³´ Â· í•©ê²©' : outcome === 'resigned' ? 'ìž…ì‚¬ì¼ í†µë³´ Â· í•©ê²© Â· í‡´ì‚¬' : labels[outcome];
-        await db.query('UPDATE allhands_job_applications SET status=$1,employer_note=$2::jsonb WHERE id=$3', [status, JSON.stringify(note), appId]);
-        return res.status(200).json({ ok: true, message: `${labels[outcome]} ì²˜ë¦¬ë¥¼ ì™„ë£Œí–ˆìŠµë‹ˆë‹¤.` });
-      }
-      if (input.action === 'selection-status') {
-        const appId = Number(input.applicationId);
-        const nextStatus = String(input.status || '').trim();
-        if (!appId || !['ë©´ì ‘ ëŒ€ìƒ', 'ë©´ì ‘ í•©ê²©', 'ë©´ì ‘ ë¶ˆí•©ê²©'].includes(nextStatus)) return res.status(400).json({ error: 'ë³€ê²½í•  ë©´ì ‘ ê²°ê³¼ë¥¼ í™•ì¸í•´ ì£¼ì„¸ìš”.' });
-        const rows = await db.query(
-          admin
-            ? 'SELECT id FROM allhands_job_applications WHERE id=$1'
-            : "SELECT a.id FROM allhands_job_applications a JOIN allhands_job_posts j ON a.job_id='db-'||j.id::text WHERE a.id=$1 AND j.data->>'ownerCompanyId'=$2",
-          admin ? [appId] : [appId, ownerCompanyId]
-        );
-        if (!rows[0]) return res.status(404).json({ error: 'ê¶Œí•œì´ ì—†ê±°ë‚˜ ì§€ì›ìžë¥¼ ì°¾ì§€ ëª»í–ˆìŠµë‹ˆë‹¤.' });
-        await db.query('UPDATE allhands_job_applications SET status=$1 WHERE id=$2', [nextStatus, appId]);
-        return res.status(200).json({ ok: true, message: `${nextStatus}ìœ¼ë¡œ ì²˜ë¦¬í–ˆìŠµë‹ˆë‹¤.` });
-      }
-      if (input.action === 'add-interview-candidate' || input.action === 'force-add-applicant') {
-        const sourceId = Number(input.sourceApplicationId);
-        const targetJobId = String(input.targetJobId || '').trim();
-        if (!sourceId || !/^db-\d+$/.test(targetJobId)) return res.status(400).json({ error: 'ì§€ì›ìžì™€ ëŒ€ìƒ ê³µê³ ë¥¼ í™•ì¸í•´ ì£¼ì„¸ìš”.' });
-        const sources = await db.query(
-          admin
-            ? 'SELECT id,worker_data FROM allhands_job_applications WHERE id=$1'
-            : "SELECT a.id,a.worker_data FROM allhands_job_applications a JOIN allhands_job_posts j ON a.job_id='db-'||j.id::text WHERE a.id=$1 AND j.data->>'ownerCompanyId'=$2",
-          admin ? [sourceId] : [sourceId, ownerCompanyId]
-        );
-        const source = sources[0];
-        const targetId = Number(targetJobId.slice(3));
-        const targets = await db.query(
-          admin
-            ? "SELECT id,data FROM allhands_job_posts WHERE id=$1 AND status='active'"
-            : "SELECT id,data FROM allhands_job_posts WHERE id=$1 AND status='active' AND data->>'ownerCompanyId'=$2",
-          admin ? [targetId] : [targetId, ownerCompanyId]
-        );
-        const target = targets[0];
-        if (!source || !target) return res.status(404).json({ error: 'ê¶Œí•œì´ ì—†ê±°ë‚˜ ëŒ€ìƒ ê³µê³ ë¥¼ ì°¾ì§€ ëª»í–ˆìŠµë‹ˆë‹¤.' });
-        const memberId = String(source.worker_data?.memberId || '');
-        if (memberId) {
-          const existing = await db.query("SELECT id FROM allhands_job_applications WHERE job_id=$1 AND worker_data->>'memberId'=$2 LIMIT 1", [targetJobId, memberId]);
-          if (existing[0]) return res.status(409).json({ error: 'ì´ë¯¸ ì´ ê³µê³ ì˜ ë©´ì ‘ ë¦¬ìŠ¤íŠ¸ì— ë“±ë¡ëœ ì§€ì›ìžìž…ë‹ˆë‹¤.' });
-        }
-        const jobTitle = String(target.data?.title || target.data?.jobTitle || 'ì±„ìš© ê³µê³ ');
-        const forced = input.action === 'force-add-applicant';
-        const note = forced
-          ? { forcedAddedFromApplicationId: sourceId, forcedAddedAt: new Date().toISOString(), workflowStage: 'application', workflowHistory: [{ step: 'application', label: 'ê´€ë¦¬ìž ê°•ì œ ì¶”ê°€', sentAt: new Date().toISOString() }] }
-          : { transferredFromApplicationId: sourceId, transferredAt: new Date().toISOString(), workflowStage: 'resume_request', workflowHistory: [{ step: 'resume_request', label: 'ì´ë ¥ì„œ ìš”ì²­', sentAt: new Date().toISOString() }] };
-        const created = await db.query('INSERT INTO allhands_job_applications (job_id,job_title,worker_data,status,employer_note) VALUES ($1,$2,$3::jsonb,$4,$5::jsonb) RETURNING id', [targetJobId, jobTitle, JSON.stringify(source.worker_data || {}), forced ? 'ì§€ì›ìž í™•ì¸' : 'ì´ë ¥ì„œ ìš”ì²­', JSON.stringify(note)]);
-        return res.status(201).json({ ok: true, id: created[0].id, message: forced ? 'ë‹¤ë¥¸ ê³µê³  ì§€ì›ìžë¥¼ í˜„ìž¬ ê³µê³ ì— ì¶”ê°€í–ˆìŠµë‹ˆë‹¤.' : 'ë‹¤ë¥¸ ê³µê³ ì˜ ë©´ì ‘ ë¦¬ìŠ¤íŠ¸ì— ì¶”ê°€í–ˆìŠµë‹ˆë‹¤.' });
-      }
-      if (input.action === 'transfer-application') {
-        const appId = Number(input.applicationId);
-        const targetJobId = String(input.targetJobId || '').trim();
-        if (!appId || !/^db-\d+$/.test(targetJobId)) return res.status(400).json({ error: 'ì§€ì›ìžì™€ ëŒ€ìƒ ê³µê³ ë¥¼ í™•ì¸í•´ ì£¼ì„¸ìš”.' });
-        const sources = await db.query(
-          admin
-            ? 'SELECT id,job_id,worker_data,employer_note FROM allhands_job_applications WHERE id=$1'
-            : "SELECT a.id,a.job_id,a.worker_data,a.employer_note FROM allhands_job_applications a JOIN allhands_job_posts j ON a.job_id='db-'||j.id::text WHERE a.id=$1 AND j.data->>'ownerCompanyId'=$2",
-          admin ? [appId] : [appId, ownerCompanyId]
-        );
-        const source = sources[0];
-        const targetId = Number(targetJobId.slice(3));
-        const targets = await db.query(
-          admin
-            ? "SELECT id,data FROM allhands_job_posts WHERE id=$1 AND status='active'"
-            : "SELECT id,data FROM allhands_job_posts WHERE id=$1 AND status='active' AND data->>'ownerCompanyId'=$2",
-          admin ? [targetId] : [targetId, ownerCompanyId]
-        );
-        const target = targets[0];
-        if (!source || !target) return res.status(404).json({ error: 'ê¶Œí•œì´ ì—†ê±°ë‚˜ ëŒ€ìƒ ê³µê³ ë¥¼ ì°¾ì§€ ëª»í–ˆìŠµë‹ˆë‹¤.' });
-        if (source.job_id === targetJobId) return res.status(400).json({ error: 'í˜„ìž¬ ê³µê³ ì™€ ë‹¤ë¥¸ ê³µê³ ë¥¼ ì„ íƒí•´ ì£¼ì„¸ìš”.' });
-        const memberId = String(source.worker_data?.memberId || '');
-        if (memberId) {
-          const existing = await db.query("SELECT id FROM allhands_job_applications WHERE job_id=$1 AND worker_data->>'memberId'=$2 AND id<>$3 LIMIT 1", [targetJobId, memberId, appId]);
-          if (existing[0]) return res.status(409).json({ error: 'ì´ë¯¸ ëŒ€ìƒ ê³µê³ ì— ì§€ì› ì´ë ¥ì´ ìžˆëŠ” ì§€ì›ìžìž…ë‹ˆë‹¤.' });
-        }
-        const now = new Date().toISOString();
-        const previous = source.employer_note || {};
-        const history = Array.isArray(previous.workflowHistory) ? previous.workflowHistory : [];
-        const note = { ...previous, transferredFromJobId: source.job_id, transferredAt: now, workflowStage: 'application', workflowHistory: [...history, { step: 'application', label: 'ë‹¤ë¥¸ ê³µê³ ë¡œ ì§€ì› ì „í™˜', sentAt: now }], interview: null, startDate: '' };
-        const jobTitle = String(target.data?.title || target.data?.jobTitle || 'ì±„ìš© ê³µê³ ');
-        await db.query('UPDATE allhands_job_applications SET job_id=$1,job_title=$2,status=$3,employer_note=$4::jsonb WHERE id=$5', [targetJobId, jobTitle, 'ì§€ì›ìž í™•ì¸', JSON.stringify(note), appId]);
-        return res.status(200).json({ ok: true, message: 'ì§€ì›ìžë¥¼ ë‹¤ë¥¸ ê³µê³ ë¡œ ì „í™˜í–ˆìŠµë‹ˆë‹¤.' });
-      }
-      if (input.action === 'interview-schedule') {
-        const appId = Number(input.applicationId), interviewAt = String(input.interviewAt || '').trim().slice(0, 80), interviewPlace = String(input.interviewPlace || '').trim().slice(0, 500);
-        if (!appId || !interviewAt || !interviewPlace) return res.status(400).json({ error: 'ë©´ì ‘ ì¼ì‹œì™€ ìž¥ì†Œë¥¼ ìž…ë ¥í•´ ì£¼ì„¸ìš”.' });
-        const rows = await db.query(
-          admin
-            ? 'SELECT id,job_title,worker_data,employer_note FROM allhands_job_applications WHERE id=$1'
-            : "SELECT a.id,a.job_title,a.worker_data,a.employer_note FROM allhands_job_applications a JOIN allhands_job_posts j ON a.job_id='db-'||j.id::text WHERE a.id=$1 AND j.data->>'ownerCompanyId'=$2",
-          admin ? [appId] : [appId, ownerCompanyId]
-        );
-        const application = rows[0], workerId = Number(application?.worker_data?.memberId);
-        if (!application) return res.status(404).json({ error: 'ê¶Œí•œì´ ì—†ê±°ë‚˜ ì§€ì›ìžë¥¼ ì°¾ì§€ ëª»í–ˆìŠµë‹ˆë‹¤.' });
-        const interview = { interviewAt, interviewPlace, requestedAt: new Date().toISOString(), resumeRequested: true };
-        const note = { ...(application.employer_note || {}), interview, resumeRequested: true };
-        await db.query("UPDATE allhands_job_applications SET status='ë©´ì ‘ ì¼ì • ì•ˆë‚´',employer_note=$1::jsonb WHERE id=$2", [JSON.stringify(note), appId]);
-        if (Number.isSafeInteger(workerId)) {
-          const workers = await db.query("SELECT data FROM allhands_signup_applications WHERE id=$1 AND kind='worker' AND status='active' LIMIT 1", [workerId]);
-          if (workers[0]) {
-            let senderName = 'all hands JOB ê´€ë¦¬ìž';
-            if (company) {
-              const sender = await db.query('SELECT data FROM allhands_signup_applications WHERE id=$1 LIMIT 1', [Number(company.id)]);
-              senderName = String(sender[0]?.data?.companyName || sender[0]?.data?.company || 'ê¸°ì—… íšŒì›');
-            }
-            const message = `[ë©´ì ‘ ì¼ì • ì•ˆë‚´]\n\nê³µê³ : ${application.job_title}\nì¼ì‹œ: ${interviewAt}\nìž¥ì†ŒÂ·ë°©ì‹: ${interviewPlace}\n\në©´ì ‘ ì „ ê°„íŽ¸ ì´ë ¥ì„œë¥¼ ìž‘ì„±í•´ ì¶”ê°€ ì œì¶œí•´ ì£¼ì„¸ìš”. ë‚´ ì •ë³´ ë©”ë‰´ì˜ ì´ë ¥ì„œ ìž‘ì„±ì—ì„œ ìž‘ì„±í•  ìˆ˜ ìžˆìŠµë‹ˆë‹¤.`;
-            await db.query('INSERT INTO allhands_messages (sender_kind,sender_id,sender_name,recipient_kind,recipient_id,recipient_name,subject,body,attachments) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9::jsonb)', [admin ? 'admin' : 'company', admin ? null : Number(company.id), senderName, 'worker', workerId, String(workers[0].data?.name || application.worker_data?.name || 'êµ¬ì§ìž'), `[${application.job_title}] ë©´ì ‘ ì¼ì • ë° ì´ë ¥ì„œ ìš”ì²­`, message, '[]']);
-          }
-        }
-        return res.status(200).json({ ok: true, message: 'ë©´ì ‘ ì¼ì •ê³¼ ê°„íŽ¸ ì´ë ¥ì„œ ì œì¶œ ìš”ì²­ì„ ì „ë‹¬í–ˆìŠµë‹ˆë‹¤.' });
-      }
-      if (input.action === 'payslip-message-send') {
-        const document = input.document && typeof input.document === 'object' ? input.document : {};
-        if (documentType === 'field-document') {
-          const previousRows = await db.query(
-            "SELECT id,data,updated_at FROM allhands_operation_documents WHERE document_type='field-document' AND owner_company_id IS NOT DISTINCT FROM $1 AND data->>'templateId'=$2 AND (data->>'managedSite'=$3 OR data->>'site'=$3) ORDER BY updated_at DESC LIMIT 1",
-            [ownerCompanyId, String(document.templateId || ''), String(document.managedSite || document.site || '')]
-          );
-          const previous = previousRows[0]?.data || null;
-          const required = documentValidation.validateRequired(document, { id: document.templateId, title: document.title });
-          const errors = required.filter(item => item.level === 'error');
-          if (document.status === 'complete' && errors.length) return res.status(400).json({ error: `ìž‘ì„± ì™„ë£Œë¡œ ì €ìž¥í•  ìˆ˜ ì—†ìŠµë‹ˆë‹¤. í•„ìˆ˜ê°’Â·ì„œëª… ëˆ„ë½ ${errors.length}ê°œë¥¼ í™•ì¸í•´ ì£¼ì„¸ìš”.`, validation: required });
-          document.previousDocumentId = previousRows[0]?.id || null;
-          document.versionNumber = Number(previous?.versionNumber || 0) + 1;
-          document.changes = documentValidation.diff(previous, document);
-          document.validation = required;
-          document.reviewedAt = new Date().toISOString();
-        }
-        const appId = Number(document.applicationId);
-        if (!appId) return res.status(400).json({ error: 'ëŒ€ìƒ ì¸ë ¥ì„ í™•ì¸í•´ ì£¼ì„¸ìš”.' });
-        const people = await db.query(
-          admin
-            ? 'SELECT id,worker_data FROM allhands_job_applications WHERE id=$1'
-            : "SELECT a.id,a.worker_data FROM allhands_job_applications a JOIN allhands_job_posts j ON a.job_id='db-'||j.id::text WHERE a.id=$1 AND j.data->>'ownerCompanyId'=$2",
-          admin ? [appId] : [appId, ownerCompanyId]
-        );
-        const person = people[0], workerId = Number(person?.worker_data?.memberId);
-        if (!person || !Number.isSafeInteger(workerId)) return res.status(400).json({ error: 'í”Œëž«í¼ íšŒì› ê³„ì •ì´ ì—°ê²°ëœ ì¸ë ¥ì—ê²Œë§Œ ìª½ì§€ë¥¼ ë³´ë‚¼ ìˆ˜ ìžˆìŠµë‹ˆë‹¤.' });
-        const workers = await db.query("SELECT data FROM allhands_signup_applications WHERE id=$1 AND kind='worker' AND status='active' LIMIT 1", [workerId]);
-        if (!workers[0]) return res.status(400).json({ error: 'ìˆ˜ì‹ ìžì˜ í™œì„±í™”ëœ êµ¬ì§ìž ê³„ì •ì„ ì°¾ì„ ìˆ˜ ì—†ìŠµë‹ˆë‹¤.' });
-        let senderName = 'all hands JOB ê´€ë¦¬ìž';
-        if (company) {
-          const sender = await db.query('SELECT data FROM allhands_signup_applications WHERE id=$1 LIMIT 1', [Number(company.id)]);
-          senderName = String(sender[0]?.data?.companyName || sender[0]?.data?.company || 'ê¸°ì—… íšŒì›');
-        }
-        const subject = String(document.subject || '').trim().slice(0, 160);
-        const messageBody = String(document.body || '').trim().slice(0, 3000);
-        if (!subject || !messageBody) return res.status(400).json({ error: 'ëª…ì„¸ì„œ ë‚´ìš©ì´ ì¤€ë¹„ë˜ì§€ ì•Šì•˜ìŠµë‹ˆë‹¤.' });
-        const sent = await db.query(
-          "INSERT INTO allhands_messages (sender_kind,sender_id,sender_name,recipient_kind,recipient_id,recipient_name,subject,body,attachments,message_type) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9::jsonb,'message') RETURNING id,created_at",
-          [admin ? 'admin' : 'company', admin ? null : Number(company.id), senderName, 'worker', workerId, String(workers[0].data?.name || person.worker_data?.name || 'êµ¬ì§ìž'), subject, messageBody, '[]']
-        );
-        const delivery = { applicationId: appId, month: String(document.month || ''), payDate: String(document.payDate || ''), deliveryMethod: 'í”Œëž«í¼ ìª½ì§€', deliveredAt: new Date().toISOString(), messageId: sent[0].id, payslip: document.payslip && typeof document.payslip === 'object' ? document.payslip : null };
-        const saved = await db.query('INSERT INTO allhands_operation_documents (owner_company_id,document_type,data) VALUES ($1,$2,$3::jsonb) RETURNING id,updated_at', [ownerCompanyId, 'payslip-delivery', JSON.stringify(delivery)]);
-        return res.status(201).json({ ok: true, id: saved[0].id, messageId: sent[0].id, updatedAt: saved[0].updated_at });
-      }
-      if (input.action === 'system-inquiry') {
-        const category = String(input.category || '').trim();
-        const subject = String(input.subject || '').trim().slice(0, 160);
-        const messageBody = String(input.body || '').trim().slice(0, 3000);
-        if (!['ì˜¤ë¥˜ ì‹ ê³ ', 'ê°œì„  ì œì•ˆ', 'ê¸°íƒ€ ë¬¸ì˜'].includes(category) || !subject || !messageBody) return res.status(400).json({ error: 'ë¬¸ì˜ ìœ í˜•, ì œëª©, ë‚´ìš©ì„ ëª¨ë‘ ìž…ë ¥í•´ ì£¼ì„¸ìš”.' });
-        let senderName = 'ì˜¬í•¸ìž¡ ìš´ì˜ê´€ë¦¬ìž';
-        if (company) {
-          const senders = await db.query('SELECT data FROM allhands_signup_applications WHERE id=$1 LIMIT 1', [Number(company.id)]);
-          senderName = String(senders[0]?.data?.companyName || senders[0]?.data?.company || senders[0]?.data?.name || 'ìš´ì˜ê´€ë¦¬ íšŒì›');
-        }
-        const sent = await db.query(
-          'INSERT INTO allhands_messages (sender_kind,sender_id,sender_name,recipient_kind,recipient_id,recipient_name,subject,body,attachments) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9::jsonb) RETURNING id,created_at',
-          [admin ? 'admin' : 'company', admin ? null : Number(company.id), senderName, 'admin', null, 'ì˜¬í•¸ìž¡ ê´€ë¦¬ìž', `[ì‹œìŠ¤í…œ ë¬¸ì˜ Â· ${category}] ${subject}`, messageBody, '[]']
-        );
-        const inquiry = { category, subject, body: messageBody, messageId: sent[0].id, submittedAt: sent[0].created_at, status: 'ì ‘ìˆ˜ ì™„ë£Œ' };
-        const saved = await db.query('INSERT INTO allhands_operation_documents (owner_company_id,document_type,data) VALUES ($1,$2,$3::jsonb) RETURNING id,updated_at', [ownerCompanyId, 'system-inquiry', JSON.stringify(inquiry)]);
-        return res.status(201).json({ ok: true, id: saved[0].id, messageId: sent[0].id, updatedAt: saved[0].updated_at });
-      }
-      if (input.action === 'employment-contract-request') {
-        const applicationId = Number(input.applicationId);
-        if (!applicationId || !input.contract || typeof input.contract !== 'object') return res.status(400).json({ error: 'ê·¼ë¡œìžì™€ ê³„ì•½ ì¡°ê±´ì„ í™•ì¸í•´ ì£¼ì„¸ìš”.' });
-        const people = await db.query(admin ? 'SELECT id,worker_data,job_title FROM allhands_job_applications WHERE id=$1' : "SELECT a.id,a.worker_data,a.job_title FROM allhands_job_applications a JOIN allhands_job_posts j ON a.job_id='db-'||j.id::text WHERE a.id=$1 AND j.data->>'ownerCompanyId'=$2", admin ? [applicationId] : [applicationId, ownerCompanyId]);
-        if (!people[0]) return res.status(404).json({ error: 'ê³„ì•½ ìš”ì²­ ëŒ€ìƒì„ ì°¾ì§€ ëª»í–ˆìŠµë‹ˆë‹¤.' });
-        const person = people[0], contract = { ...input.contract, applicationId, workerId: String(person.worker_data?.memberId || ''), workerName: String(person.worker_data?.name || ''), jobTitle: person.job_title, status: 'ì„œëª… ìš”ì²­', requestedAt: new Date().toISOString() };
-        const saved = await db.query('INSERT INTO allhands_operation_documents (owner_company_id,document_type,data) VALUES ($1,$2,$3::jsonb) RETURNING id', [ownerCompanyId || '', 'employment-contract', JSON.stringify(contract)]);
-        return res.status(201).json({ ok: true, id: saved[0].id, message: 'í‘œì¤€ê·¼ë¡œê³„ì•½ì„œ ì„œëª… ìš”ì²­ì„ ë³´ëƒˆìŠµë‹ˆë‹¤.' });
-      }
-      if (input.action === 'approval-process') {
-        const documentId = Number(input.documentId);
-        const status = String(input.status || '');
-        if (!documentId || !['ìŠ¹ì¸','ë°˜ë ¤'].includes(status)) return res.status(400).json({ error: 'ê²°ìž¬ ìƒíƒœë¥¼ í™•ì¸í•´ ì£¼ì„¸ìš”.' });
-        const documents = await db.query(admin ? "SELECT id,data FROM allhands_operation_documents WHERE id=$1 AND document_type IN ('worker-certificate-request','worker-attendance-request')" : "SELECT id,data FROM allhands_operation_documents WHERE id=$1 AND owner_company_id=$2 AND document_type IN ('worker-certificate-request','worker-attendance-request')", admin ? [documentId] : [documentId, ownerCompanyId]);
-        if (!documents[0]) return res.status(404).json({ error: 'ê²°ìž¬ ëŒ€ìƒì„ ì°¾ì§€ ëª»í–ˆìŠµë‹ˆë‹¤.' });
-        const request = documents[0].data || {};
-        let attendanceApplied = false;
-        if (status === 'ìŠ¹ì¸' && request.kind === 'attendance') {
-          const applicationId = Number(request.applicationId);
-          const requestDate = String(request.requestDate || '');
-          if (!applicationId || !/^\d{4}-\d{2}-\d{2}$/.test(requestDate)) return res.status(400).json({ error: 'ê·¼íƒœ ë°œìƒì¼ì´ ì—†ëŠ” ì‹ ì²­ìž…ë‹ˆë‹¤. ê·¼ë¡œìžì—ê²Œ ë‚ ì§œë¥¼ ì„ íƒí•´ ë‹¤ì‹œ ì‹ ì²­í•˜ë„ë¡ ì•ˆë‚´í•´ ì£¼ì„¸ìš”.' });
-          const people = await db.query(
-            admin
-              ? 'SELECT id,employer_note FROM allhands_job_applications WHERE id=$1'
-              : "SELECT a.id,a.employer_note FROM allhands_job_applications a JOIN allhands_job_posts j ON a.job_id='db-'||j.id::text WHERE a.id=$1 AND j.data->>'ownerCompanyId'=$2",
-            admin ? [applicationId] : [applicationId, ownerCompanyId]
-          );
-          if (!people[0]) return res.status(404).json({ error: 'ê·¼íƒœ ë°˜ì˜ ëŒ€ìƒ ì¸ë ¥ì„ ì°¾ì§€ ëª»í–ˆìŠµë‹ˆë‹¤.' });
-          const previous = people[0].employer_note || {};
-          const operation = previous.operation || {};
-          const month = requestDate.slice(0, 7);
-          const day = String(Number(requestDate.slice(8, 10)));
-          const calendar = operation.attendanceCalendar && typeof operation.attendanceCalendar === 'object' ? operation.attendanceCalendar : { months: {}, closedMonths: {} };
-          if (calendar.closedMonths?.[month]) return res.status(409).json({ error: 'í•´ë‹¹ ì›” ê·¼íƒœê°€ ì´ë¯¸ ë§ˆê°ë˜ì–´ ìŠ¹ì¸ ë‚´ìš©ì„ ìžë™ ë°˜ì˜í•  ìˆ˜ ì—†ìŠµë‹ˆë‹¤. ë§ˆê° ì·¨ì†Œ í›„ ë‹¤ì‹œ ìŠ¹ì¸í•´ ì£¼ì„¸ìš”.' });
-          const hours = { 'ì—°ì°¨': 8, 'ë°˜ì°¨': 4, 'ì¡°í‡´': 4, 'ì§€ê° ì‚¬ìœ ì„œ': 7 };
-          const oldDay = calendar.months?.[month]?.days?.[day] || {};
-          const days = { ...(calendar.months?.[month]?.days || {}) };
-          days[day] = {
-            ...oldDay,
-            basic: oldDay.basic !== undefined ? oldDay.basic : (hours[request.requestType] ?? 8),
-            overtime: oldDay.overtime !== undefined ? oldDay.overtime : 0,
-            night: oldDay.night !== undefined ? oldDay.night : 0,
-            approvalStatus: request.requestType || 'ê·¼íƒœ ìŠ¹ì¸',
-            approvalDocumentId: documentId,
-            approvedAt: new Date().toISOString()
-          };
-          const attendanceCalendar = { ...calendar, months: { ...(calendar.months || {}), [month]: { ...(calendar.months?.[month] || {}), days } }, closedMonths: { ...(calendar.closedMonths || {}) } };
-          await db.query('UPDATE allhands_job_applications SET employer_note=$1::jsonb WHERE id=$2', [JSON.stringify({ ...previous, operation: { ...operation, attendanceCalendar, updatedAt: new Date().toISOString() } }), applicationId]);
-          attendanceApplied = true;
-        }
-        const next = { ...request, status, decidedAt: new Date().toISOString(), attendanceApplied };
-        await db.query('UPDATE allhands_operation_documents SET data=$1::jsonb,updated_at=NOW() WHERE id=$2', [JSON.stringify(next), documentId]);
-        return res.status(200).json({ ok: true, message: attendanceApplied ? 'ìŠ¹ì¸í–ˆê³  í•´ë‹¹ ë‚ ì§œ ê·¼íƒœí‘œì— ìžë™ ë°˜ì˜í–ˆìŠµë‹ˆë‹¤.' : `${status} ì²˜ë¦¬í–ˆìŠµë‹ˆë‹¤.` });
-      }
-      if (input.action === 'quote-save' || input.action === 'contract-save' || input.action === 'dispatch-contract-save' || input.action === 'assignment-to-save' || input.action === 'invoice-save' || input.action === 'job-client-save' || input.action === 'payroll-calculation-save' || input.action === 'payslip-delivery-save' || input.action === 'worker-notice-save' || input.action === 'field-document-save') {
-        const documentType = input.action === 'field-document-save' ? 'field-document' : input.action === 'quote-save' ? 'quote' : input.action === 'invoice-save' ? 'invoice' : input.action === 'job-client-save' ? 'job-client' : input.action === 'payroll-calculation-save' ? 'payroll-calculation' : input.action === 'payslip-delivery-save' ? 'payslip-delivery' : input.action === 'worker-notice-save' ? 'worker-notice' : input.action === 'dispatch-contract-save' ? 'dispatch-contract' : input.action === 'assignment-to-save' ? 'assignment-to' : 'contract';
-        const document = input.document && typeof input.document === 'object' ? input.document : {};
-        if (documentType === 'worker-notice') {
-          document.scope = admin ? 'all' : 'company';
-          if (ownerCompanyId) document.companyId = ownerCompanyId;
-        }
-        const rows = await db.query(
-          'INSERT INTO allhands_operation_documents (owner_company_id,document_type,data) VALUES ($1,$2,$3::jsonb) RETURNING id,updated_at',
-          [ownerCompanyId, documentType, JSON.stringify(document)]
-        );
-        return res.status(201).json({ ok: true, id: rows[0].id, updatedAt: rows[0].updated_at });
-      }
-
-      const appId = Number(input.applicationId);
-      if (!appId) return res.status(400).json({ error: 'ëŒ€ìƒ ì¸ë ¥ì„ í™•ì¸í•´ ì£¼ì„¸ìš”.' });
-      const rows = await db.query(
-        admin
-          ? 'SELECT employer_note FROM allhands_job_applications WHERE id=$1'
-          : "SELECT a.employer_note FROM allhands_job_applications a JOIN allhands_job_posts j ON a.job_id='db-'||j.id::text WHERE a.id=$1 AND j.data->>'ownerCompanyId'=$2",
-        admin ? [appId] : [appId, ownerCompanyId]
-      );
-      if (!rows[0]) return res.status(404).json({ error: 'ê¶Œí•œì´ ì—†ê±°ë‚˜ ëŒ€ìƒ ì¸ë ¥ì´ ì—†ìŠµë‹ˆë‹¤.' });
-      const previous = rows[0].employer_note || {};
-      const operation = {
-        ...(previous.operation || {}),
-        attendance: String(input.attendance || ''),
-        workDays: String(input.workDays || ''),
-        workHours: String(input.workHours || ''),
-        dailyRate: String(input.dailyRate || ''),
-        grossPay: String(input.grossPay || ''),
-        netPay: String(input.netPay || ''),
-        payDate: String(input.payDate || ''),
-        assignmentDate: String(input.assignmentDate || previous.operation?.assignmentDate || ''),
-        resignationDate: String(input.resignationDate || previous.operation?.resignationDate || ''),
-        bankName: String(input.bankName || previous.operation?.bankName || ''),
-        bankCode: String(input.bankCode || previous.operation?.bankCode || ''),
-        accountNumber: String(input.accountNumber || previous.operation?.accountNumber || ''),
-        accountHolder: String(input.accountHolder || previous.operation?.accountHolder || ''),
-        assignedJobId: String(input.assignedJobId || previous.operation?.assignedJobId || ''),
-        hourlyRate: String(input.hourlyRate || previous.operation?.hourlyRate || '10320'),
-        workType: String(input.workType || previous.operation?.workType || 'ì£¼ê°„'),
-        socialInsurance: input.socialInsurance && typeof input.socialInsurance === 'object' ? input.socialInsurance : (previous.operation?.socialInsurance || {}),
-        attendanceCalendar: input.attendanceCalendar && typeof input.attendanceCalendar === 'object' ? input.attendanceCalendar : (previous.operation?.attendanceCalendar || {}),
-        payrollConfirmed: typeof input.payrollConfirmed === 'boolean' ? input.payrollConfirmed : Boolean(previous.operation?.payrollConfirmed),
-        payrollConfirmedMonth: String(input.payrollConfirmedMonth || previous.operation?.payrollConfirmedMonth || '').slice(0, 7),
-        payrollConfirmedAt: String(input.payrollConfirmedAt || previous.operation?.payrollConfirmedAt || '').slice(0, 40),
-        payrollSummary: input.payrollSummary && typeof input.payrollSummary === 'object' ? input.payrollSummary : (previous.operation?.payrollSummary || {}),
-        updatedAt: new Date().toISOString()
-      };
-      await db.query('UPDATE allhands_job_applications SET employer_note=$1::jsonb WHERE id=$2', [JSON.stringify({ ...previous, operation }), appId]);
-      return res.status(200).json({ ok: true });
-    }
-
-    if (req.method === 'GET') {
-      const jobs = await db.query(
-        admin
-          ? "SELECT id,data FROM allhands_job_posts WHERE status='active' AND COALESCE(data->>'listingType','hiring')<>'b2b' ORDER BY updated_at DESC"
-          : "SELECT id,data FROM allhands_job_posts WHERE status='active' AND COALESCE(data->>'listingType','hiring')<>'b2b' AND data->>'ownerCompanyId'=$1 ORDER BY updated_at DESC",
-        admin ? [] : [ownerCompanyId]
-      );
-      const people = await db.query(
-        admin
-          ? "SELECT a.id,a.job_id,a.job_title,a.worker_data,a.status,a.employer_note,a.created_at FROM allhands_job_applications a JOIN allhands_job_posts j ON a.job_id='db-'||j.id::text WHERE COALESCE(j.data->>'listingType','hiring')<>'b2b' ORDER BY a.created_at DESC LIMIT 300"
-          : "SELECT a.id,a.job_id,a.job_title,a.worker_data,a.status,a.employer_note,a.created_at FROM allhands_job_applications a JOIN allhands_job_posts j ON a.job_id='db-'||j.id::text WHERE COALESCE(j.data->>'listingType','hiring')<>'b2b' AND j.data->>'ownerCompanyId'=$1 ORDER BY a.created_at DESC LIMIT 300",
-        admin ? [] : [ownerCompanyId]
-      );
-      const memberIds = people.map(item => Number(item.worker_data?.memberId)).filter(Number.isSafeInteger);
-      if (memberIds.length) {
-        const workers = await db.query("SELECT id,data FROM allhands_signup_applications WHERE kind='worker' AND id=ANY($1::bigint[])", [memberIds]);
-        const photoByMemberId = new Map(workers.map(worker => [Number(worker.id), String(worker.data?.photoPath || '')]));
-        people.forEach(person => {
-          const memberId = Number(person.worker_data?.memberId);
-          const photoPath = photoByMemberId.get(memberId);
-          if (photoPath) person.worker_data = { ...person.worker_data, photoPath, photoUrl: operationPhotoUrl(photoPath, ownerCompanyId, admin) };
-        });
-      }
-      const documents = await db.query(
-        admin
-          ? 'SELECT id,document_type,data,updated_at FROM allhands_operation_documents ORDER BY updated_at DESC LIMIT 100'
-          : 'SELECT id,document_type,data,updated_at FROM allhands_operation_documents WHERE owner_company_id=$1 ORDER BY updated_at DESC LIMIT 100',
-        admin ? [] : [ownerCompanyId]
-      );
-      const messages = await db.query(
-        admin
-          ? "SELECT id,recipient_id,created_at,read_at FROM allhands_messages WHERE sender_kind='admin' AND sender_id IS NULL ORDER BY created_at DESC LIMIT 300"
-          : "SELECT id,recipient_id,created_at,read_at FROM allhands_messages WHERE sender_kind='company' AND sender_id=$1 ORDER BY created_at DESC LIMIT 300",
-        admin ? [] : [Number(company.id)]
-      );
-      const externalApprovals = await db.query(
-        admin
-          ? 'SELECT id,document_id,document_type,recipient_name,recipient_email,status,opened_at,responded_at,expires_at,created_at,events FROM allhands_external_approvals ORDER BY created_at DESC LIMIT 100'
-          : 'SELECT id,document_id,document_type,recipient_name,recipient_email,status,opened_at,responded_at,expires_at,created_at,events FROM allhands_external_approvals WHERE owner_company_id=$1 ORDER BY created_at DESC LIMIT 100',
-        admin ? [] : [ownerCompanyId]
-      );
-      let companyName = '';
-      if (company) {
-        const companyRows = await db.query('SELECT data FROM allhands_signup_applications WHERE id=$1 LIMIT 1', [Number(company.id)]);
-        const companyData = companyRows[0]?.data || {};
-        companyName = String(companyData.companyName || companyData.company || companyData.name || '').trim();
-      }
-      return res.status(200).json({ jobs, people, documents, messages, externalApprovals, role: admin ? 'admin' : 'company', companyName });
-    }
-
-    return res.status(405).json({ error: 'í—ˆìš©ë˜ì§€ ì•Šì€ ìš”ì²­ìž…ë‹ˆë‹¤.' });
-  } catch (error) {
-    return res.status(500).json({ error: errorKind(error) });
-  }
-};
-
+YªçŠx-®éÜj×¢ëiºÚ+Š§j[h‘éÜ¢éí×ž·í:-jZ.¶›­–)Þ³V6öç7B7'—FòÒ&WV—&R‚v7'—Fòr“°Ð¦6öç7B²Vç7W&UF&ÆW2ÂfÆ–BÂ&öG’ÂW'&÷$¶–æBÒÒ&WV—&R‚râõöWF‚æ6§2r“°Ð¦6öç7BFö7VÖVçEfÆ–FF–öâÒ&WV—&R‚rââöFö7VÖVçB×fÆ–FF–öâæ§2r“°Ð Ð¦gVæ7F–öâ÷W&F–öå†÷FõW&Â‡F†æÖRÂ6ö×ç”–BÂFÖ–â’°Ð¢6öç7B6V7&WBÒ&ö6W72æVçbäõU$D”ôå5õ54õõ4T5$UC°Ð¢–b‚6V7&WBÇÂF†æÖR’&WGW&ârs°Ð¢6öç7B–ÆöBÒ'VffW"æg&öÒ„¥4ôâç7G&–æv–g’‡²F†æÖRÂ6ö×ç”–C¢6ö×ç”–BÇÂrrÂFÖ–ã¢&ööÆVâ†FÖ–â’ÂW‡—&W3¢FFRææ÷r‚’²¢c¢Ò’’çFõ7G&–ær‚v&6ScGW&Âr“°Ð¢6öç7B6–væGW&RÒ7'—Fòæ7&VFT†Ö2‚w6†#SbrÂ6V7&WB’çWFFR‡–ÆöB’æF–vW7B‚v&6ScGW&Âr“°Ð¢&WGW&â‡GG3¢òöÆÆ†æG2Ö¦ö"çfW&6VÂæö’öf–ÆR×f–Ws÷F†æÖSÒG¶Væ6öFUU$”6ö×öæVçB‡F†æÖR—Òf÷W&F–öç5Fö¶VãÒG·–ÆöGÒâG·6–væGW&WÖ°Ð§ÐÐ Ð¦ÖöGVÆRæW‡÷'G2Ò7–æ2‡&WÂ&W2’Óâ°Ð¢G'’°Ð¢6öç7BFÖ–âÒfÆ–B‡&WÂvÆÆ†æG5öFÖ–âr“°Ð¢6öç7B6ö×ç’ÒfÆ–B‡&WÂvÆÆ†æG5ö6ö×ç’rÂv6ö×ç’r“°Ð¢–b‚FÖ–âbb6ö×ç’’&WGW&â&W2ç7FGW2ƒC’æ§6öâ‡²W'&÷#¢~É«NÉˆ«HºjÂÈ*ÎÉÛNØ«ŽÉyÈIÂ«‹ÉxR¹‰¸©B«HºjÎÉéºÎ«{ŽÉÛŽÉÛBÙXNÉ©NÙZž¸¸Ž¸ºBârÒ“°Ð Ð¢6öç7BF"Òv—BVç7W&UF&ÆW2‚“°Ð¢6öç7B÷væW$6ö×ç”–BÒ6ö×ç’ò7G&–ær†6ö×ç’æ–B’¢çVÆÃ°Ð¢–b†6ö×ç’’°Ð¢6öç7BÖVÖ&W'6†—2Òv—BF"çVW'’‚%4TÄT5BFFe$ôÒÆÆ†æG5÷6–vçWöÆ–6F–öç2t„U$R–CÒCäB¶–æCÒv6ö×ç’räB7FGW3Òv7F—fRrÄ”Ô•B"Â´çVÖ&W"†6ö×ç’æ–B•Ò“°Ð¢–b†ÖVÖ&W'6†—5³ÓòæFFòæÖVÖ&W'6†—F–W"ÓÒv÷W&F–öç2r’&WGW&â&W2ç7FGW2ƒC2’æ§6öâ‡²W'&÷#¢~É«NÉˆ«HºjÎÙ¨ÎÉ¹«hÎÙYÎÉÛBÙXNÉ©NÙZž¸¸Ž¸ºBâÉŠÎÙ[ŽÉê«HºjÎÉéÉy«(ÂÉ«NÉˆ«HºjÎÙ¨ÎÉ¹È«žÉÛŽÉØBÉ©NË*ÞÙ[BÊ;ÎÈKŽÉ©BârÒ“°Ð¢ÐÐ Ð¢–b‡&WæÖWF†öBÓÓÒuõ5Br’°Ð¢6öç7B–çWBÒ&öG’‡&W“°Ð¢–b†–çWBæ7F–öâÓÓÒwv÷&¶W"ÖGFVæFæ6RÖ–çf—FRr’°Ð¢6öç7BÆ–6F–öä–BÒçVÖ&W"†–çWBæÆ–6F–öä–B“°Ð¢–b‚çVÖ&W"æ—56fT–çFVvW"†Æ–6F–öä–B’’&WGW&â&W2ç7FGW2ƒC’æ§6öâ‡²W'&÷#¢~«{ÎºÎÉéÊ	^»;Nº[ÂÙ™^ÉÛŽÙ[BÊ;ÎÈKŽÉ©BârÒ“°Ð¢6öç7BV÷ÆRÒv—BF"çVW'’€Ð¢FÖ–àÐ¢ò%4TÄT5Bæ–BÆçv÷&¶W%öFFÆæV×Æ÷–W%öæ÷FRÆ¢æFF2¦ö%öFFe$ôÒÆÆ†æG5ö¦ö%öÆ–6F–öç2¤ô”âÆÆ†æG5ö¦ö%÷÷7G2¢ôâæ¦ö%ö–CÒvF"ÒwÇÆ¢æ–C£§FW‡Bt„U$Ræ–CÒC Ð¢¢%4TÄT5Bæ–BÆçv÷&¶W%öFFÆæV×Æ÷–W%öæ÷FRÆ¢æFF2¦ö%öFFe$ôÒÆÆ†æG5ö¦ö%öÆ–6F–öç2¤ô”âÆÆ†æG5ö¦ö%÷÷7G2¢ôâæ¦ö%ö–CÒvF"ÒwÇÆ¢æ–C£§FW‡Bt„U$Ræ–CÒCäB¢æFFÓãâv÷væW$6ö×ç”–BsÒC""ÀÐ¢FÖ–âò¶Æ–6F–öä–EÒ¢¶Æ–6F–öä–BÂ÷væW$6ö×ç”–EÐÐ¢“°Ð¢6öç7BW'6öâÒV÷ÆU³Ó°Ð¢6öç7Bv÷&¶W$–BÒçVÖ&W"‡W'6öãòçv÷&¶W%öFFòæÖVÖ&W$–B“°Ð¢6öç7B÷W&F–öâÒW'6öãòæV×Æ÷–W%öæ÷FSòæ÷W&F–öâÇÂ·Ó°Ð¢–b‚W'6öâ’&WGW&â&W2ç7FGW2ƒCB’æ§6öâ‡²W'&÷#¢~«hÎÙYÎÉÛBÉxn«¸)‚«{ÎºÎÉéº[ÂËîÊxº«¾ÙhŽÈ«^¸¸Ž¸ºBârÒ“°Ð¢–b‚çVÖ&W"æ—56fT–çFVvW"‡v÷&¶W$–B’’&WGW&â&W2ç7FGW2ƒC’æ§6öâ‡²W'&÷#¢~ÉŠÎÙ[ŽÉê«ZÎÊxÙ¨ÎÉ¹«;ÂÉ{«+¹	Â«{ÎºÎÉéºxÂËiÎØ{N«{ÂÉ[ºxØÎº[ÂºxÎ¹:BÈ‰‚ÉèŽÈ«^¸¸Ž¸ºBârÒ“°Ð¢–b‚7G&–ær†÷W&F–öâæ76–væÖVçDFFRÇÂrr’çG&–Ò‚’ÇÂ7G&–ær†÷W&F–öâç&W6–væF–öäFFRÇÂrr’çG&–Ò‚’’&WGW&â&W2ç7FGW2ƒC’æ§6öâ‡²W'&÷#¢~ÙˆNÉêÂ«{ÎºËNÊxÉy»Ë™Ž¹	Â«{ÎºÎÉéºxÂºxØÎº[ÂºxÎ¹:BÈ‰‚ÉèŽÈ«^¸¸Ž¸ºBârÒ“°Ð¢6öç7Bv÷&¶W'2Òv—BF"çVW'’‚%4TÄT5B–BÆFFe$ôÒÆÆ†æG5÷6–vçWöÆ–6F–öç2t„U$R–CÒCäB¶–æCÒwv÷&¶W"räB7FGW3Òv7F—fRrÄ”Ô•B"Â·v÷&¶W$–EÒ“°Ð¢–b‚v÷&¶W'5³Ò’&WGW&â&W2ç7FGW2ƒCB’æ§6öâ‡²W'&÷#¢~Ù™ÎÈKÈ8Ø9ÎÉÛ‚«ZÎÊxÙ¨ÎÉ¹Ê	^»;Nº[ÂËîÊxº«¾ÙhŽÈ«^¸¸Ž¸ºBârÒ“°Ð¢6öç7BFö¶VâÒ7'—Fòç&æFöÔ'—FW2ƒ3"’çFõ7G&–ær‚v&6ScGW&Âr“°Ð¢6öç7BFö¶Vä†6‚Ò7'—Fòæ7&VFT†6‚‚w6†#Sbr’çWFFR‡Fö¶Vâ’æF–vW7B‚v†W‚r“°Ð¢6öç7Bæ÷rÒæWrFFR‚’çFô•4õ7G&–ær‚“°Ð¢6öç7BW‡—&W4BÒæWrFFR„FFRææ÷r‚’²r¢#B¢c¢c¢’çFô•4õ7G&–ær‚“°Ð¢6öç7B–çf—FF–öä÷væW$–BÒ÷væW$6ö×ç”–BÇÂ7G&–ær‡W'6öâæ¦ö%öFFòæ÷væW$6ö×ç”–BÇÂrr“°Ð¢6öç7B–çf—FF–öâÒ°Ð¢Æ–6F–öä–C¢7G&–ær†Æ–6F–öä–B’Âv÷&¶W$–C¢7G&–ær‡v÷&¶W$–B’ÀÐ¢v÷&¶W$æÖS¢7G&–ær‡W'6öâçv÷&¶W%öFFòææÖRÇÂv÷&¶W'5³ÒæFFòææÖRÇÂ~«{ÎºÎÉér’ç6Æ–6RƒÂ#’ÀÐ¢Fö¶Vä†6‚Â7&VFVDC¢æ÷rÂW‡—&W4BÂW6VDC¢rpÐ¢Ó°Ð¢v—BF"çVW'’€Ð¢%UDDRÆÆ†æG5ö÷W&F–öåöFö7VÖVçG24UBFFÖ§6öæ%÷6WB†FFÂw·&Wfö¶VDGÒrÇFõö§6öæ"‚C£§FW‡B’ÇG'VR’ÇWFFVEöCÔäõr‚’t„U$RFö7VÖVçE÷G—SÒwv÷&¶W"ÖGFVæFæ6RÖ–çf—FRräB÷væW%ö6ö×ç•ö–CÒC"äBFFÓãâvÆ–6F–öä–BsÒC2äB4ôÄU44R†FFÓãâw&Wfö¶VDBrÂrr“Òrr"ÀÐ¢¶æ÷rÂ–çf—FF–öä÷væW$–BÂ7G&–ær†Æ–6F–öä–B•ÐÐ¢“°Ð¢v—BF"çVW'’€Ð¢t”å4U%B”åDòÆÆ†æG5ö÷W&F–öåöFö7VÖVçG2†÷væW%ö6ö×ç•ö–BÆFö7VÖVçE÷G—RÆFF’dÅTU2‚CÂC"ÂC3£¦§6öæ"’rÀÐ¢¶–çf—FF–öä÷væW$–BÂwv÷&¶W"ÖGFVæFæ6RÖ–çf—FRrÂ¥4ôâç7G&–æv–g’†–çf—FF–öâ•ÐÐ¢“°Ð¢6öç7B†÷7BÒ7G&–ær‡&Wæ†VFW'5²w‚Öf÷'v&FVBÖ†÷7BuÒÇÂ&Wæ†VFW'2æ†÷7BÇÂvÆÆ†æG2Ö÷W&F–öç2çfW&6VÂær’ç7Æ—B‚rÂr•³ÒçG&–Ò‚“°Ð¢6öç7B&÷Fö6öÂÒ7G&–ær‡&Wæ†VFW'5²w‚Öf÷'v&FVB×&÷FòuÒÇÂv‡GG2r’ç7Æ—B‚rÂr•³ÒçG&–Ò‚’ÇÂv‡GG2s°Ð¢&WGW&â&W2ç7FGW2ƒ#’æ§6öâ‡²ö³¢G'VRÂ–çf—FUW&Ã¢G·&÷Fö6öÇÓ¢òòG¶†÷7GÒö’öÆöv–ãö–çf—FSÒG¶Væ6öFUU$”6ö×öæVçB‡Fö¶Vâ—ÖÂW‡—&W4BÒ“°Ð¢ÐÐ¢–b†–çWBæ7F–öâÓÓÒvW‡FW&æÂÖ&÷fÂÖ7&VFRr’°Ð¢6öç7BFö7VÖVçD–BÒçVÖ&W"†–çWBæFö7VÖVçD–B“°Ð¢6öç7B&V6—–VçDæÖRÒ7G&–ær†–çWBç&V6—–VçDæÖRÇÂrr’çG&–Ò‚’ç6Æ–6RƒÂ#“°Ð¢6öç7B&V6—–VçDVÖ–ÂÒ7G&–ær†–çWBç&V6—–VçDVÖ–ÂÇÂrr’çG&–Ò‚’çFôÆ÷vW$66R‚’ç6Æ–6RƒÂ#SB“°Ð¢–b‚Fö7VÖVçD–BÇÂ&V6—–VçDæÖRÇÂõåµåÇ4Ò´µåÇ4ÒµÂåµåÇ4Ò²BòçFW7B‡&V6—–VçDVÖ–Â’’&WGW&â&W2ç7FGW2ƒC’æ§6öâ‡²W'&÷#¢~«(Øj¸»N¸»žÉéÉÛNºhN«;ÂÉŠÎ»	Nº[‚ÉÛNº™NÉÛÂÊ;ÎÈhÎº[ÂÉè^º
+^Ù[BÊ;ÎÈKŽÉ©BârÒ“°Ð¢6öç7BFö7VÖVçG2Òv—BF"çVW'’€Ð¢FÖ–àÐ¢ò%4TÄT5B–BÆFö7VÖVçE÷G—RÆFFe$ôÒÆÆ†æG5ö÷W&F–öåöFö7VÖVçG2t„U$R–CÒCäBFö7VÖVçE÷G—R”â‚v–çfö–6RrÂw—&öÆÂÖ6Æ7VÆF–öâr’ Ð¢¢%4TÄT5B–BÆFö7VÖVçE÷G—RÆFFe$ôÒÆÆ†æG5ö÷W&F–öåöFö7VÖVçG2t„U$R–CÒCäB÷væW%ö6ö×ç•ö–CÒC"äBFö7VÖVçE÷G—R”â‚v–çfö–6RrÂw—&öÆÂÖ6Æ7VÆF–öâr’"ÀÐ¢FÖ–âò¶Fö7VÖVçD–EÒ¢¶Fö7VÖVçD–BÂ÷væW$6ö×ç”–EÐÐ¢“°Ð¢6öç7BFö7VÖVçE&÷rÒFö7VÖVçG5³Ó°Ð¢–b‚Fö7VÖVçE&÷r’&WGW&â&W2ç7FGW2ƒCB’æ§6öâ‡²W'&÷#¢~«(ØjÉ©NË*ÞÉØB»;N¸+ÂË*Þ«ZÎÈIÂ¹‰¸©B«ˆžÉzÎÊ	^È+ºËŽÈIÎº[ÂËîÊxº«¾ÙhŽÈ«^¸¸Ž¸ºBârÒ“°Ð¢6öç7BFö¶VâÒ7'—Fòç&æFöÔ'—FW2ƒ3"’çFõ7G&–ær‚v&6ScGW&Âr“°Ð¢6öç7BFö¶Vä†6‚Ò7'—Fòæ7&VFT†6‚‚w6†#Sbr’çWFFR‡Fö¶Vâ’æF–vW7B‚v†W‚r“°Ð¢6öç7Bæ÷rÒæWrFFR‚’çFô•4õ7G&–ær‚“°Ð¢6öç7BW‡—&W4BÒæWrFFR„FFRææ÷r‚’²r¢#B¢c¢c¢’çFô•4õ7G&–ær‚“°Ð¢6öç7BWfVçBÒ·²G—S¢v7&VFVBrÂÆ&VÃ¢~«(ØjÉ©NË*ÒÈ9ÞÈKrÂC¢æ÷rÂ7F÷#¢FÖ–âò~É«NÉˆ«HºjÎÉér¢~«‹ÉxRÉ«NÉˆ¸»N¸»žÉérÕÓ°Ð¢6öç7B6fVBÒv—BF"çVW'’€Ð¢t”å4U%B”åDòÆÆ†æG5öW‡FW&æÅö&÷fÇ2†÷væW%ö6ö×ç•ö–BÆFö7VÖVçEö–BÆFö7VÖVçE÷G—RÇ&V6—–VçEöæÖRÇ&V6—–VçEöVÖ–ÂÆ66W75÷Fö¶Våö†6‚ÆFö7VÖVçE÷6æ6†÷BÆWfVçG2ÆW‡—&W5öB’dÅTU2‚CÂC"ÂC2ÂCBÂCRÂCbÂCs£¦§6öæ"ÂCƒ£¦§6öæ"ÂC’’$UEU$ä”är–BÆW‡—&W5öBrÀÐ¢¶÷væW$6ö×ç”–BÂFö7VÖVçE&÷ræ–BÂFö7VÖVçE&÷ræFö7VÖVçE÷G—RÂ&V6—–VçDæÖRÂ&V6—–VçDVÖ–ÂÂFö¶Vä†6‚Â¥4ôâç7G&–æv–g’†Fö7VÖVçE&÷ræFFÇÂ·Ò’Â¥4ôâç7G&–æv–g’†WfVçB’ÂW‡—&W4EÐÐ¢“°Ð¢6öç7B†÷7BÒ7G&–ær‡&Wæ†VFW'5²w‚Öf÷'v&FVBÖ†÷7BuÒÇÂ&Wæ†VFW'2æ†÷7BÇÂvÆÆ†æG2Ö÷W&F–öç2çfW&6VÂær’ç7Æ—B‚rÂr•³ÒçG&–Ò‚“°Ð¢6öç7B&÷Fö6öÂÒ7G&–ær‡&Wæ†VFW'5²w‚Öf÷'v&FVB×&÷FòuÒÇÂv‡GG2r’ç7Æ—B‚rÂr•³ÒçG&–Ò‚’ÇÂv‡GG2s°Ð¢&WGW&â&W2ç7FGW2ƒ#’æ§6öâ‡²ö³¢G'VRÂ–C¢6fVE³Òæ–BÂ&÷fÅW&Ã¢G·&÷Fö6öÇÓ¢òòG¶†÷7GÒö&÷fÂæ‡FÖÃ÷Fö¶VãÒG¶Væ6öFUU$”6ö×öæVçB‡Fö¶Vâ—ÖÂW‡—&W4C¢6fVE³ÒæW‡—&W5öBÒ“°Ð¢ÐÐ¢–b†–çWBæ7F–öâÓÓÒwv÷&¶fÆ÷rÖæ÷F–g’r’°Ð¢6öç7B–BÒçVÖ&W"†–çWBæÆ–6F–öä–B“°Ð¢6öç7B7FWÒ7G&–ær†–çWBç7FWÇÂrr’çG&–Ò‚“°Ð¢6öç7B7FW2Ò²w&W7VÖU÷&WVW7BrÂv–çFW'f–Wuöæ÷F–6RrÂw7F'Eöæ÷F–6RuÓ°Ð¢–b‚–BÇÂ7FW2æ–æ6ÇVFW2‡7FW’’&WGW&â&W2ç7FGW2ƒC’æ§6öâ‡²W'&÷#¢~ÊxNÙhžÙZ¸ºŽ«8Nº[ÂÙ™^ÉÛŽÙ[BÊ;ÎÈKŽÉ©BârÒ“°Ð Ð¢6öç7B&÷w2Òv—BF"çVW'’€Ð¢FÖ–àÐ¢òu4TÄT5B–BÆ¦ö%÷F—FÆRÇv÷&¶W%öFFÇ7FGW2ÆV×Æ÷–W%öæ÷FRe$ôÒÆÆ†æG5ö¦ö%öÆ–6F–öç2t„U$R–CÒCpÐ¢¢%4TÄT5Bæ–BÆæ¦ö%÷F—FÆRÆçv÷&¶W%öFFÆç7FGW2ÆæV×Æ÷–W%öæ÷FRe$ôÒÆÆ†æG5ö¦ö%öÆ–6F–öç2¤ô”âÆÆ†æG5ö¦ö%÷÷7G2¢ôâæ¦ö%ö–CÒvF"ÒwÇÆ¢æ–C£§FW‡Bt„U$Ræ–CÒCäB¢æFFÓãâv÷væW$6ö×ç”–BsÒC""ÀÐ¢FÖ–âò¶–EÒ¢¶–BÂ÷væW$6ö×ç”–EÐÐ¢“°Ð¢6öç7BÆ–6F–öâÒ&÷w5³Ó°Ð¢–b‚Æ–6F–öâ’&WGW&â&W2ç7FGW2ƒCB’æ§6öâ‡²W'&÷#¢~«hÎÙYÎÉÛBÉxn«¸)‚ÊxÉ¹Ééº[ÂËîÊxº«¾ÙhŽÈ«^¸¸Ž¸ºBârÒ“°Ð Ð¢6öç7B&Wf–÷W2ÒÆ–6F–öâæV×Æ÷–W%öæ÷FRÇÂ·Ó°Ð¢6öç7BÆVv7•7FGW2Ò7G&–ær†Æ–6F–öâç7FGW2ÇÂrr“°Ð¢6öç7B7W'&VçBÒ²w&W7VÖU÷&WVW7BrÂv–çFW'f–Wuöæ÷F–6RrÂw7F'Eöæ÷F–6RuÒæ–æ6ÇVFW2‡&Wf–÷W2çv÷&¶fÆ÷u7FvRÐ¢ò&Wf–÷W2çv÷&¶fÆ÷u7FvPÐ¢¢‚þÉè^È*ÎÉÛÇÎÙZž«*’òçFW7B†ÆVv7•7FGW2’òw7F'Eöæ÷F–6Rr¢‚þº›NÊ	ÉÛÎÊ	WÎº›NÊ	ÉÛÂØk^»;BòçFW7B†ÆVv7•7FGW2’òv–çFW'f–Wuöæ÷F–6Rr¢‚þº›NÊ	ÎÉÛNº
+^ÈIÂÉ©NË*ÒòçFW7B†ÆVv7•7FGW2’òw&W7VÖU÷&WVW7Br¢vÆ–6F–öâr’’“°Ð¢6öç7B&WV—&VBÒ²&W7VÖU÷&WVW7C¢vÆ–6F–öârÂ–çFW'f–Wuöæ÷F–6S¢w&W7VÖU÷&WVW7BrÂ7F'Eöæ÷F–6S¢v–çFW'f–Wuöæ÷F–6RrÓ°Ð¢–b†7W'&VçBÓÒ&WV—&VE·7FWÒ’&WGW&â&W2ç7FGW2ƒC’æ§6öâ‡²W'&÷#¢~ÉÛNÊB¸ºŽ«8Nº[Âº‹ÎÊË)ŽºjÎÙ[BÊ;ÎÈKŽÉ©BârÒ“°Ð Ð¢6öç7B–çFW'f–WtBÒ7G&–ær†–çWBæ–çFW'f–WtBÇÂrr’çG&–Ò‚’ç6Æ–6RƒÂƒ“°Ð¢6öç7B–çFW'f–WuÆ6RÒ7G&–ær†–çWBæ–çFW'f–WuÆ6RÇÂrr’çG&–Ò‚’ç6Æ–6RƒÂS“°Ð¢6öç7B7F'DFFRÒ7G&–ær†–çWBç7F'DFFRÇÂrr’çG&–Ò‚’ç6Æ–6RƒÂ3“°Ð¢–b‡7FWÓÓÒv–çFW'f–Wuöæ÷F–6Rrbb‚–çFW'f–WtBÇÂ–çFW'f–WuÆ6R’’&WGW&â&W2ç7FGW2ƒC’æ§6öâ‡²W'&÷#¢~º›NÊ	ÉÛÎÈ¹ÎÉ˜Éê^ÈhÎº[ÂÉè^º
+^Ù[BÊ;ÎÈKŽÉ©BârÒ“°Ð¢–b‡7FWÓÓÒw7F'Eöæ÷F–6Rrbb7F'DFFR’&WGW&â&W2ç7FGW2ƒC’æ§6öâ‡²W'&÷#¢~Éè^È*ÎÉÛÎÉØBÉè^º
+^Ù[BÊ;ÎÈKŽÉ©BârÒ“°Ð Ð¢6öç7Bæ÷rÒæWrFFR‚’çFô•4õ7G&–ær‚“°Ð¢6öç7BÆ&VÇ2Ò²&W7VÖU÷&WVW7C¢~ÉÛNº
+^ÈIÂÉ©NË*ÒrÂ–çFW'f–Wuöæ÷F–6S¢~º›NÊ	ÉÛÂØk^»;BrÂ7F'Eöæ÷F–6S¢~Éè^È*ÎÉÛÂØk^»;BrÓ°Ð¢6öç7B†—7F÷'’Ò'&’æ—4'&’‡&Wf–÷W2çv÷&¶fÆ÷t†—7F÷'’’ò&Wf–÷W2çv÷&¶fÆ÷t†—7F÷'’¢µÓ°Ð¢6öç7B–çFW'f–WrÒ7FWÓÓÒv–çFW'f–Wuöæ÷F–6RpÐ¢ò²âââ‡&Wf–÷W2æ–çFW'f–WrÇÂ·Ò’Â–çFW'f–WtBÂ–çFW'f–WuÆ6RÂ&WVW7FVDC¢æ÷rÂ&W7VÖU&WVW7FVC¢G'VRÐÐ¢¢‡&Wf–÷W2æ–çFW'f–WrÇÂ·Ò“°Ð¢6öç7Bæ÷FRÒ°Ð¢ââç&Wf–÷W2ÀÐ¢v÷&¶fÆ÷u7FvS¢7FWÀÐ¢v÷&¶fÆ÷t†—7F÷'“¢²ââæ†—7F÷'’Â²7FWÂÆ&VÃ¢Æ&VÇ5·7FWÒÂ6VçDC¢æ÷rÂ–çFW'f–WtC¢7FWÓÓÒv–çFW'f–Wuöæ÷F–6Rrò–çFW'f–WtB¢VæFVf–æVBÂ7F'DFFS¢7FWÓÓÒw7F'Eöæ÷F–6Rrò7F'DFFR¢VæFVf–æVBÕÒÀÐ¢–çFW'f–WrÀÐ¢&W7VÖU&WVW7FVC¢7FWÓÒw&W7VÖU÷&WVW7Brò&Wf–÷W2ç&W7VÖU&WVW7FVB¢G'VRÀÐ¢7F'DFFS¢7FWÓÓÒw7F'Eöæ÷F–6Rrò7F'DFFR¢&Wf–÷W2ç7F'DFFPÐ¢Ó°Ð¢6öç7B7FGW2Ò7FWÓÓÒw7F'Eöæ÷F–6Rrò~Éè^È*ÎÉÛÂØk^»;B+rÙZž«*’r¢Æ&VÇ5·7FWÓ°Ð¢v—BF"çVW'’‚uUDDRÆÆ†æG5ö¦ö%öÆ–6F–öç24UB7FGW3ÒCÆV×Æ÷–W%öæ÷FSÒC#£¦§6öæ"t„U$R–CÒC2rÂ·7FGW2Â¥4ôâç7G&–æv–g’†æ÷FR’Â–EÒ“°Ð Ð¢6öç7Bv÷&¶W$–BÒçVÖ&W"†Æ–6F–öâçv÷&¶W%öFFòæÖVÖ&W$–B“°Ð¢–b„çVÖ&W"æ—56fT–çFVvW"‡v÷&¶W$–B’’°Ð¢6öç7Bv÷&¶W'2Òv—BF"çVW'’‚%4TÄT5BFFe$ôÒÆÆ†æG5÷6–vçWöÆ–6F–öç2t„U$R–CÒCäB¶–æCÒwv÷&¶W"räB7FGW3Òv7F—fRrÄ”Ô•B"Â·v÷&¶W$–EÒ“°Ð¢–b‡v÷&¶W'5³Ò’°Ð¢ÆWB6VæFW$æÖRÒvÆÂ†æG2¤ô"«HºjÎÉés°Ð¢–b†6ö×ç’’°Ð¢6öç7B6VæFW"Òv—BF"çVW'’‚u4TÄT5BFFe$ôÒÆÆ†æG5÷6–vçWöÆ–6F–öç2t„U$R–CÒCÄ”Ô•BrÂ´çVÖ&W"†6ö×ç’æ–B•Ò“°Ð¢6VæFW$æÖRÒ7G&–ær‡6VæFW%³ÓòæFFòæ6ö×ç”æÖRÇÂ6VæFW%³ÓòæFFòæ6ö×ç’ÇÂ~«‹ÉxRÙ¨ÎÉ¹r“°Ð¢ÐÐ¢6öç7BÖW76vW2Ò°Ð¢&W7VÖU÷&WVW7C¢¾ÉÛNº
+^ÈIÂÊ	ÎËiÂÉ©NË*ÕÕÆåÆî«;^«:¢G¶Æ–6F–öâæ¦ö%÷F—FÆWÕÆåÆîº›NÊ	ÊxNÙhžÉØBÉÈNÙ[B«NØë‚ÉÛNº
+^ÈIÎº[ÂÉéÈKÙ[BÊ	ÎËiÎÙ[BÊ;ÎÈKŽÉ©Bâ¸+BÊ	^»;Bº™N¸›NÉÙ‚ÉÛNº
+^ÈIÂÉéÈKÉyÈIÂÉéÈKÙZÈ‰‚ÉèŽÈ«^¸¸Ž¸ºBæÀÐ¢–çFW'f–Wuöæ÷F–6S¢¾º›NÊ	ÉÛÎÊ	RÉXŽ¸+EÕÆåÆî«;^«:¢G¶Æ–6F–öâæ¦ö%÷F—FÆWÕÆîÉÛÎÈ¹Ã¢G¶–çFW'f–WtGÕÆîÉê^ÈhÌ+~»
+žÈ¹Ó¢G¶–çFW'f–WuÆ6WÕÆåÆîº›NÊ	ÉÛÎÊ	^ÉÛBÙ™^Ê	^¹	ŽÉxŽÈ«^¸¸Ž¸ºBæÀÐ¢7F'Eöæ÷F–6S¢¾Éè^È*ÎÉÛÂÉXŽ¸+EÕÆåÆî«;^«:¢G¶Æ–6F–öâæ¦ö%÷F—FÆWÕÆîÉè^È*ÎÉÛÃ¢G·7F'DFFWÕÆåÆîÉè^È*ÂÉÛÎÊ	^«;ÂÊH»˜NÈ*ÎÙZÞÉØBÙ™^ÉÛŽÙ[BÊ;ÎÈKŽÉ©Bæ Ð¢Ó°Ð¢v—BF"çVW'’‚t”å4U%B”åDòÆÆ†æG5öÖW76vW2‡6VæFW%ö¶–æBÇ6VæFW%ö–BÇ6VæFW%öæÖRÇ&V6—–VçEö¶–æBÇ&V6—–VçEö–BÇ&V6—–VçEöæÖRÇ7V&¦V7BÆ&öG’ÆGF6†ÖVçG2’dÅTU2‚CÂC"ÂC2ÂCBÂCRÂCbÂCrÂC‚ÂC“£¦§6öæ"’rÂ¶FÖ–âòvFÖ–âr¢v6ö×ç’rÂFÖ–âòçVÆÂ¢çVÖ&W"†6ö×ç’æ–B’Â6VæFW$æÖRÂwv÷&¶W"rÂv÷&¶W$–BÂ7G&–ær‡v÷&¶W'5³ÒæFFòææÖRÇÂÆ–6F–öâçv÷&¶W%öFFòææÖRÇÂ~«ZÎÊxÉér’Â²G¶Æ–6F–öâæ¦ö%÷F—FÆWÕÒG¶Æ&VÇ5·7FW×ÖÂÖW76vW5·7FWÒÂuµÒuÒ“°Ð¢ÐÐ¢ÐÐ¢&WGW&â&W2ç7FGW2ƒ#’æ§6öâ‡²ö³¢G'VRÂÖW76vS¢G¶Æ&VÇ5·7FW×ÞÉØBŽº[Â’ÊN¸ºÎÙhŽÈ«^¸¸Ž¸ºBæÒ“°Ð¢ÐÐ¢–b†–çWBæ7F–öâÓÓÒwv÷&¶fÆ÷rÖ÷WF6öÖRr’°Ð¢6öç7B–BÒçVÖ&W"†–çWBæÆ–6F–öä–B“°Ð¢6öç7B÷WF6öÖRÒ7G&–ær†–çWBæ÷WF6öÖRÇÂrr’çG&–Ò‚“°Ð¢6öç7BÆ&VÇ2Ò²Fö7VÖVçE÷&V¦V7FVC¢~ÈIÎºY‚»hŽÙZž«*’rÂ–çFW'f–Wu÷&V¦V7FVC¢~º›NÊ	»hŽÙZž«*’rÂ–çFW'f–Wuöæõ÷6†÷s¢~º›NÊ	¸[ŽÈ{ÂrÂ7F'EöGFVæFVC¢~Ë*²ËiÎ«{ÂÉ˜Nº8ÂrÂ7F'Eöæõ÷6†÷s¢~Éè^È*Â¸»žÉÛÂºûŽËiÎ«{ÂrÂ&W6–væVC¢~Ø{NÈ*ÂË)ŽºjÂrÓ°Ð¢–b‚–BÇÂÆ&VÇ5¶÷WF6öÖUÒ’&WGW&â&W2ç7FGW2ƒC’æ§6öâ‡²W'&÷#¢~Ë)ŽºjÎÙZ«+«;Îº[ÂÙ™^ÉÛŽÙ[BÊ;ÎÈKŽÉ©BârÒ“°Ð¢6öç7B&÷w2Òv—BF"çVW'’€Ð¢FÖ–àÐ¢òu4TÄT5B–BÇ7FGW2ÆV×Æ÷–W%öæ÷FRe$ôÒÆÆ†æG5ö¦ö%öÆ–6F–öç2t„U$R–CÒCpÐ¢¢%4TÄT5Bæ–BÆç7FGW2ÆæV×Æ÷–W%öæ÷FRe$ôÒÆÆ†æG5ö¦ö%öÆ–6F–öç2¤ô”âÆÆ†æG5ö¦ö%÷÷7G2¢ôâæ¦ö%ö–CÒvF"ÒwÇÆ¢æ–C£§FW‡Bt„U$Ræ–CÒCäB¢æFFÓãâv÷væW$6ö×ç”–BsÒC""ÀÐ¢FÖ–âò¶–EÒ¢¶–BÂ÷væW$6ö×ç”–EÐÐ¢“°Ð¢6öç7BÆ–6F–öâÒ&÷w5³Ó°Ð¢–b‚Æ–6F–öâ’&WGW&â&W2ç7FGW2ƒCB’æ§6öâ‡²W'&÷#¢~«hÎÙYÎÉÛBÉxn«¸)‚ÊxÉ¹Ééº[ÂËîÊxº«¾ÙhŽÈ«^¸¸Ž¸ºBârÒ“°Ð¢6öç7B&Wf–÷W2ÒÆ–6F–öâæV×Æ÷–W%öæ÷FRÇÂ·Ó°Ð¢6öç7B7W'&VçE7FvRÒ7G&–ær‡&Wf–÷W2çv÷&¶fÆ÷u7FvRÇÂ‚þÉè^È*ÎÉÛÇÎÙZž«*’òçFW7B†Æ–6F–öâç7FGW2ÇÂrr’òw7F'Eöæ÷F–6Rr¢‚þº›NÊ	ÉÛÎÊ	WÎº›NÊ	ÉÛÂØk^»;BòçFW7B†Æ–6F–öâç7FGW2ÇÂrr’òv–çFW'f–Wuöæ÷F–6Rr¢‚þº›NÊ	ÎÉÛNº
+^ÈIÂÉ©NË*ÒòçFW7B†Æ–6F–öâç7FGW2ÇÂrr’òw&W7VÖU÷&WVW7Br¢vÆ–6F–öâr’’’“°Ð¢6öç7BÆÆ÷vVBÒ°Ð¢Fö7VÖVçE÷&V¦V7FVC¢²vÆ–6F–öârÂw&W7VÖU÷&WVW7BuÒÀÐ¢–çFW'f–Wu÷&V¦V7FVC¢²v–çFW'f–Wuöæ÷F–6RuÒÀÐ¢–çFW'f–Wuöæõ÷6†÷s¢²v–çFW'f–Wuöæ÷F–6RuÒÀÐ¢7F'EöGFVæFVC¢²w7F'Eöæ÷F–6RuÒÀÐ¢7F'Eöæõ÷6†÷s¢²w7F'Eöæ÷F–6RuÒÀÐ¢&W6–væVC¢²w7F'Eöæ÷F–6RuÐÐ¢Ó°Ð¢–b‚ÆÆ÷vVE¶÷WF6öÖUÒæ–æ6ÇVFW2†7W'&VçE7FvR’ÇÂ†÷WF6öÖRÓÓÒw&W6–væVBrbb&Wf–÷W2æGFVæFæ6U7F'FVDB’’&WGW&â&W2ç7FGW2ƒC’æ§6öâ‡²W'&÷#¢~ÙˆNÉêÂÊxNÙh’¸ºŽ«8NÉyÈIÎ¸©BÉÛBË)ŽºjÎº[ÂÙZÈ‰‚ÉxnÈ«^¸¸Ž¸ºBârÒ“°Ð¢6öç7B†—7F÷'’Ò'&’æ—4'&’‡&Wf–÷W2çv÷&¶fÆ÷t†—7F÷'’’ò&Wf–÷W2çv÷&¶fÆ÷t†—7F÷'’¢µÓ°Ð¢6öç7Bæ÷rÒæWrFFR‚’çFô•4õ7G&–ær‚“°Ð¢6öç7B÷W&F–öâÒ²âââ‡&Wf–÷W2æ÷W&F–öâÇÂ·Ò’Ó°Ð¢–b†÷WF6öÖRÓÓÒw7F'EöGFVæFVBr’÷W&F–öâæ76–væÖVçDFFRÒ7G&–ær†–çWBæFFRÇÂæ÷rç6Æ–6RƒÂ’’ç6Æ–6RƒÂ“°Ð¢–b†÷WF6öÖRÓÓÒw&W6–væVBr’÷W&F–öâç&W6–væF–öäFFRÒ7G&–ær†–çWBæFFRÇÂæ÷rç6Æ–6RƒÂ’’ç6Æ–6RƒÂ“°Ð¢6öç7BFW&Ö–æÂÒ²w7F'EöGFVæFVBuÒæ–æ6ÇVFW2†÷WF6öÖR“°Ð¢6öç7Bæ÷FRÒ²ââç&Wf–÷W2Â÷W&F–öâÂv÷&¶fÆ÷u7FvS¢FW&Ö–æÂòv6Æ÷6VBr¢w7F'Eöæ÷F–6RrÂ÷WF6öÖS¢FW&Ö–æÂò²6öFS¢÷WF6öÖRÂÆ&VÃ¢Æ&VÇ5¶÷WF6öÖUÒÂ†æFÆVDC¢æ÷rÒ¢&Wf–÷W2æ÷WF6öÖRÂGFVæFæ6U7F'FVDC¢÷WF6öÖRÓÓÒw7F'EöGFVæFVBròæ÷r¢&Wf–÷W2æGFVæFæ6U7F'FVDBÂv÷&¶fÆ÷t†—7F÷'“¢²ââæ†—7F÷'’Â²7FW¢÷WF6öÖRÂÆ&VÃ¢Æ&VÇ5¶÷WF6öÖUÒÂ6VçDC¢æ÷rÕÒÓ°Ð¢6öç7B7FGW2Ò÷WF6öÖRÓÓÒw7F'EöGFVæFVBrò~Éè^È*ÎÉÛÂØk^»;B+rÙZž«*’r¢÷WF6öÖRÓÓÒw&W6–væVBrò~Éè^È*ÎÉÛÂØk^»;B+rÙZž«*’+rØ{NÈ*Âr¢Æ&VÇ5¶÷WF6öÖUÓ°Ð¢v—BF"çVW'’‚uUDDRÆÆ†æG5ö¦ö%öÆ–6F–öç24UB7FGW3ÒCÆV×Æ÷–W%öæ÷FSÒC#£¦§6öæ"t„U$R–CÒC2rÂ·7FGW2Â¥4ôâç7G&–æv–g’†æ÷FR’Â–EÒ“°Ð¢&WGW&â&W2ç7FGW2ƒ#’æ§6öâ‡²ö³¢G'VRÂÖW76vS¢G¶Æ&VÇ5¶÷WF6öÖU×ÒË)ŽºjÎº[ÂÉ˜Nº8ÎÙhŽÈ«^¸¸Ž¸ºBæÒ“°Ð¢ÐÐ¢–b†–çWBæ7F–öâÓÓÒw6VÆV7F–öâ×7FGW2r’°Ð¢6öç7B–BÒçVÖ&W"†–çWBæÆ–6F–öä–B“°Ð¢6öç7BæW‡E7FGW2Ò7G&–ær†–çWBç7FGW2ÇÂrr’çG&–Ò‚“°Ð¢–b‚–BÇÂ²~º›NÊ	¸ÈÈ8rÂ~º›NÊ	ÙZž«*’rÂ~º›NÊ	»hŽÙZž«*’uÒæ–æ6ÇVFW2†æW‡E7FGW2’’&WGW&â&W2ç7FGW2ƒC’æ§6öâ‡²W'&÷#¢~»8«+ÞÙZº›NÊ	«+«;Îº[ÂÙ™^ÉÛŽÙ[BÊ;ÎÈKŽÉ©BârÒ“°Ð¢6öç7B&÷w2Òv—BF"çVW'’€Ð¢FÖ–àÐ¢òu4TÄT5B–Be$ôÒÆÆ†æG5ö¦ö%öÆ–6F–öç2t„U$R–CÒCpÐ¢¢%4TÄT5Bæ–Be$ôÒÆÆ†æG5ö¦ö%öÆ–6F–öç2¤ô”âÆÆ†æG5ö¦ö%÷÷7G2¢ôâæ¦ö%ö–CÒvF"ÒwÇÆ¢æ–C£§FW‡Bt„U$Ræ–CÒCäB¢æFFÓãâv÷væW$6ö×ç”–BsÒC""ÀÐ¢FÖ–âò¶–EÒ¢¶–BÂ÷væW$6ö×ç”–EÐÐ¢“°Ð¢–b‚&÷w5³Ò’&WGW&â&W2ç7FGW2ƒCB’æ§6öâ‡²W'&÷#¢~«hÎÙYÎÉÛBÉxn«¸)‚ÊxÉ¹Ééº[ÂËîÊxº«¾ÙhŽÈ«^¸¸Ž¸ºBârÒ“°Ð¢v—BF"çVW'’‚uUDDRÆÆ†æG5ö¦ö%öÆ–6F–öç24UB7FGW3ÒCt„U$R–CÒC"rÂ¶æW‡E7FGW2Â–EÒ“°Ð¢&WGW&â&W2ç7FGW2ƒ#’æ§6öâ‡²ö³¢G'VRÂÖW76vS¢G¶æW‡E7FGW7ÞÉËÎºÂË)ŽºjÎÙhŽÈ«^¸¸Ž¸ºBæÒ“°Ð¢ÐÐ¢–b†–çWBæ7F–öâÓÓÒvFBÖ–çFW'f–WrÖ6æF–FFRrÇÂ–çWBæ7F–öâÓÓÒvf÷&6RÖFBÖÆ–6çBr’°Ð¢6öç7B6÷W&6T–BÒçVÖ&W"†–çWBç6÷W&6TÆ–6F–öä–B“°Ð¢6öç7BF&vWD¦ö$–BÒ7G&–ær†–çWBçF&vWD¦ö$–BÇÂrr’çG&–Ò‚“°Ð¢–b‚6÷W&6T–BÇÂõæF"ÕÆB²BòçFW7B‡F&vWD¦ö$–B’’&WGW&â&W2ç7FGW2ƒC’æ§6öâ‡²W'&÷#¢~ÊxÉ¹ÉéÉ˜¸ÈÈ8«;^«:º[ÂÙ™^ÉÛŽÙ[BÊ;ÎÈKŽÉ©BârÒ“°Ð¢6öç7B6÷W&6W2Òv—BF"çVW'’€Ð­úß»h‘éì¶»§q«^ve:ä':­k;)à{'¤:¬á;(%{'a;,/»'a;"&;%á»"­zââ:âé‰ÈJNÃBˆ]Ù[™\“˜[YHH	Ø[[™È“Ðˆ:­ :é«;'¤	ÎÃBˆYˆ
+ÛÛ\[žJHÃBˆÛÛœÝÙ[™\ˆH]ØZ]‹œ]Y\žJ	ÔÑSPÕ]H”“ÓH[[™×ÜÚYÛ\Ø\XØ][ÛœÈÒT‘HYIHSRUIËÓ[X™\ŠÛÛ\[žKšY
+WJNÃBˆÙ[™\“˜[YHHÝš[™ÊÙ[™\–ÌOË™]OË˜ÛÛ\[žS˜[YHÙ[™\–ÌOË™]OË˜ÛÛ\[žH	ú®,;%áH;f£;&ä	ÊNÃBˆCBˆÛÛœÝÝXš™XÝHÝš[™ÊØÝ[Y[œÝXš™XÝ	ÉÊKš[J
+KœÛXÙJMŒ
+NÃBˆÛÛœÝY\ÜØYÙP›ÙHHÝš[™ÊØÝ[Y[˜›ÙH	ÉÊKš[J
+KœÛXÙJÌ
+NÃBˆYˆ
+\ÝXš™XÝ[Y\ÜØYÙP›ÙJH™]\›ˆ™\ËœÝ]\Ê
+KšœÛÛŠÈ\œ›ÜŽˆ	úê¡{!.;!':à­;&ª{'m;) :îa:ä&;)à;%b»%f;"­zââ:âé‰ÈJNÃBˆÛÛœÝÙ[H]ØZ]‹œ]Y\žJBˆ’S”ÑT•S•È[[™×ÛY\ÜØYÙ\È
+Ù[™\—ÚÚ[™Ù[™\—ÚYÙ[™\—Û˜[YK™XÚ\Y[ÚÚ[™™XÚ\Y[ÚY™XÚ\Y[Û˜[YKÝXš™XÝ›ÙK]XÚY[ËY\ÜØYÙWÝ\JHSQTÈ
+	K	‹	Ë		K	‹	Ë		NŽšœÛÛ˜‹	ÛY\ÜØYÙIÊH‘UT“’S‘ÈYÜ™X]YØ]‹BˆØYZ[ˆÈ	ØYZ[‰Èˆ	ØÛÛ\[žIËYZ[ˆÈ[ˆ[X™\ŠÛÛ\[žKšY
+KÙ[™\“˜[YK	ÝÛÜšÙ\‰ËÛÜšÙ\’YÝš[™ÊÛÜšÙ\œÖÌK™]OË›˜[YH\œÛÛ‹ÛÜšÙ\—Ù]OË›˜[YH	ú­k;)à{'¤	ÊKÝXš™XÝY\ÜØYÙP›ÙK	Ö×I×CBˆ
+NÃBˆÛÛœÝ[]™\žHHÈ\XØ][Û’Yˆ\Y[ÛˆÝš[™ÊØÝ[Y[›[Û	ÉÊK^Q]NˆÝš[™ÊØÝ[Y[œ^Q]H	ÉÊK[]™\žSY]Ùˆ	ûe#:çªûcï;*¯{)à	Ë[]™\™Y]ˆ™]È]J
+KÒTÓÔÝš[™Ê
+KY\ÜØYÙRYˆÙ[ÌKšY^\Û\ˆØÝ[Y[œ^\Û\	‰ˆ\[ÙˆØÝ[Y[œ^\Û\OOH	ÛØš™XÝ	ÈÈØÝ[Y[œ^\Û\ˆ[NÃBˆÛÛœÝØ]™YH]ØZ]‹œ]Y\žJ	ÒS”ÑT•S•È[[™×ÛÜ\˜][Û—ÙØÝ[Y[È
+ÝÛ™\—ØÛÛ\[žWÚYØÝ[Y[Ý\K]JHSQTÈ
+	K	‹	ÎŽšœÛÛ˜ŠH‘UT“’S‘ÈY\]YØ]	ËÛÝÛ™\ÛÛ\[žRY	Ü^\Û\Y[]™\žIË”ÓÓ‹œÝš[™ÚYžJ[]™\žJWJNÃBˆ™]\›ˆ™\ËœÝ]\ÊŒJKšœÛÛŠÈÚÎˆYKYˆØ]™YÌKšYY\ÜØYÙRYˆÙ[ÌKšY\]Y]ˆØ]™YÌK\]YØ]JNÃBˆCBˆYˆ
+[œ]˜XÝ[ÛˆOOH	ÜÞ\Ý[KZ[œ]Z\žIÊHÃBˆÛÛœÝØ]YÛÜžHHÝš[™Ê[œ]˜Ø]YÛÜžH	ÉÊKš[J
+NÃBˆÛÛœÝÝXš™XÝHÝš[™Ê[œ]œÝXš™XÝ	ÉÊKš[J
+KœÛXÙJMŒ
+NÃBˆÛÛœÝY\ÜØYÙP›ÙHHÝš[™Ê[œ]˜›ÙH	ÉÊKš[J
+KœÛXÙJÌ
+NÃBˆYˆ
+VÉû&):éf;"è:¬è	Ë	ú¬';!(;(';%b	Ë	ú®,;`à:ë.;'f	×Kš[˜ÛY\ÊØ]YÛÜžJH\ÝXš™XÝ[Y\ÜØYÙP›ÙJH™]\›ˆ™\ËœÝ]\Ê
+KšœÛÛŠÈ\œ›ÜŽˆ	úë.;'f;'(;f%K;(':êªK:à­;&ª{'a:êª:äd;'¡zè){em;(ï;!.;&¥‰ÈJNÃBˆ]Ù[™\“˜[YHH	û&+;en;'¨H;&­;& z­ :é«;'¤	ÎÃBˆYˆ
+ÛÛ\[žJHÃBˆÛÛœÝÙ[™\œÈH]ØZ]‹œ]Y\žJ	ÔÑSPÕ]H”“ÓH[[™×ÜÚYÛ\Ø\XØ][ÛœÈÒT‘HYIHSRUIËÓ[X™\ŠÛÛ\[žKšY
+WJNÃBˆÙ[™\“˜[YHHÝš[™ÊÙ[™\œÖÌOË™]OË˜ÛÛ\[žS˜[YHÙ[™\œÖÌOË™]OË˜ÛÛ\[žHÙ[™\œÖÌOË™]OË›˜[YH	û&­;& z­ :é«;f£;&ä	ÊNÃBˆCBˆÛÛœÝÙ[H]ØZ]‹œ]Y\žJBˆ	ÒS”ÑT•S•È[[™×ÛY\ÜØYÙ\È
+Ù[™\—ÚÚ[™Ù[™\—ÚYÙ[™\—Û˜[YK™XÚ\Y[ÚÚ[™™XÚ\Y[ÚY™XÚ\Y[Û˜[YKÝXš™XÝ›ÙK]XÚY[ÊHSQTÈ
+	K	‹	Ë		K	‹	Ë		NŽšœÛÛ˜ŠH‘UT“’S‘ÈYÜ™X]YØ]	ËBˆØYZ[ˆÈ	ØYZ[‰Èˆ	ØÛÛ\[žIËYZ[ˆÈ[ˆ[X™\ŠÛÛ\[žKšY
+KÙ[™\“˜[YK	ØYZ[‰Ë[	û&+;en;'¨H:­ :é«;'¤	Ëû"ç;"©;ag:ë.;'f0­È	ØØ]YÛÜž_WH	ÜÝXš™XÝXY\ÜØYÙP›ÙK	Ö×I×CBˆ
+NÃBˆÛÛœÝ[œ]Z\žHHÈØ]YÛÜžKÝXš™XÝ›ÙNˆY\ÜØYÙP›ÙKY\ÜØYÙRYˆÙ[ÌKšYÝX›Z]Y]ˆÙ[ÌK˜Ü™X]YØ]Ý]\Îˆ	û(${"&;&a:èã	ÈNÃBˆÛÛœÝØ]™YH]ØZ]‹œ]Y\žJ	ÒS”ÑT•S•È[[™×ÛÜ\˜][Û—ÙØÝ[Y[È
+ÝÛ™\—ØÛÛ\[žWÚYØÝ[Y[Ý\K]JHSQTÈ
+	K	‹	ÎŽšœÛÛ˜ŠH‘UT“’S‘ÈY\]YØ]	ËÛÝÛ™\ÛÛ\[žRY	ÜÞ\Ý[KZ[œ]Z\žIË”ÓÓ‹œÝš[™ÚYžJ[œ]Z\žJWJNÃBˆ™]\›ˆ™\ËœÝ]\ÊŒJKšœÛÛŠÈÚÎˆYKYˆØ]™YÌKšYY\ÜØYÙRYˆÙ[ÌKšY\]Y]ˆØ]™YÌK\]YØ]JNÃBˆCBˆYˆ
+[œ]˜XÝ[ÛˆOOH	Ù[\Þ[Y[XÛÛ˜XÝ\™\]Y\Ý	ÊHÃBˆÛÛœÝ\XØ][Û’YH[X™\Š[œ]˜\XØ][Û’Y
+NÃBˆYˆ
+X\XØ][Û’YZ[œ]˜ÛÛ˜XÝ\[Ùˆ[œ]˜ÛÛ˜XÝOOH	ÛØš™XÝ	ÊH™]\›ˆ™\ËœÝ]\Ê
+KšœÛÛŠÈ\œ›ÜŽˆ	ú­ï:èg;'¤;&`:¬á;%oH;(l:¬m;'a;fe{'n;em;(ï;!.;&¥‰ÈJNÃBˆÛÛœÝ[ÜHH]ØZ]‹œ]Y\žJYZ[ˆÈ	ÔÑSPÕYÛÜšÙ\—Ù]K›Ø—Ý]H”“ÓH[[™×Ú›Ø—Ø\XØ][ÛœÈÒT‘HYIIÈˆ”ÑSPÕKšYKÛÜšÙ\—Ù]KKš›Ø—Ý]H”“ÓH[[™×Ú›Ø—Ø\XØ][ÛœÈH“ÒSˆ[[™×Ú›Ø—ÜÜÝÈˆÓˆKš›Ø—ÚYIÙ‹Iß‹šYŽ^ÒT‘HKšYIHS‘‹™]KO‰ÛÝÛ™\ÛÛ\[žRY	ÏIˆ‹YZ[ˆÈØ\XØ][Û’YHˆØ\XØ][Û’YÝÛ™\ÛÛ\[žRYJNÃBˆYˆ
+\[ÜVÌJH™]\›ˆ™\ËœÝ]\Ê
+KšœÛÛŠÈ\œ›ÜŽˆ	ú¬á;%oH;&¥;,«H:ã ; à{'a;,/»)à:ê®ûe¢;"­zââ:âé‰ÈJNÃBˆÛÛœÝ\œÛÛˆH[ÜVÌKÛÛ˜XÝHÈ‹‹š[œ]˜ÛÛ˜XÝ\XØ][Û’YÛÜšÙ\’YˆÝš[™Ê\œÛÛ‹ÛÜšÙ\—Ù]OË›Y[X™\’Y	ÉÊKÛÜšÙ\“˜[YNˆÝš[™Ê\œÛÛ‹ÛÜšÙ\—Ù]OË›˜[YH	ÉÊK›Ø•]Nˆ\œÛÛ‹š›Ø—Ý]KÝ]\Îˆ	û!':ê¡H;&¥;,«IË™\]Y\ÝY]ˆ™]È]J
+KÒTÓÔÝš[™Ê
+HNÃBˆÛÛœÝØ]™YH]ØZ]‹œ]Y\žJ	ÒS”ÑT•S•È[[™×ÛÜ\˜][Û—ÙØÝ[Y[È
+ÝÛ™\—ØÛÛ\[žWÚYØÝ[Y[Ý\K]JHSQTÈ
+	K	‹	ÎŽšœÛÛ˜ŠH‘UT“’S‘ÈY	ËÛÝÛ™\ÛÛ\[žRY	ÉË	Ù[\Þ[Y[XÛÛ˜XÝ	Ë”ÓÓ‹œÝš[™ÚYžJÛÛ˜XÝ
+WJNÃBˆ™]\›ˆ™\ËœÝ]\ÊŒJKšœÛÛŠÈÚÎˆYKYˆØ]™YÌKšYY\ÜØYÙNˆ	ûdg;) :­ï:èg:¬á;%o{!';!':ê¡H;&¥;,«{'a:ìí:àâ;"­zââ:âé‰ÈJNÃBˆCBˆYˆ
+[œ]˜XÝ[ÛˆOOH	Ø\›Ý˜[\›ØÙ\ÜÉÊHÃBˆÛÛœÝØÝ[Y[YH[X™\Š[œ]™ØÝ[Y[Y
+NÃBˆÛÛœÝÝ]\ÈHÝš[™Ê[œ]œÝ]\È	ÉÊNÃBˆYˆ
+YØÝ[Y[YVÉû"®{'n	Ë	úì&:è)	×Kš[˜ÛY\ÊÝ]\ÊJH™]\›ˆ™\ËœÝ]\Ê
+KšœÛÛŠÈ\œ›ÜŽˆ	ú¬¬;'«; à{`ç:éo;fe{'n;em;(ï;!.;&¥‰ÈJNÃBˆÛÛœÝØÝ[Y[ÈH]ØZ]‹œ]Y\žJYZ[ˆÈ”ÑSPÕY]H”“ÓH[[™×ÛÜ\˜][Û—ÙØÝ[Y[ÈÒT‘HYIHS‘ØÝ[Y[Ý\HSˆ
+	ÝÛÜšÙ\‹XÙ\YšXØ]K\™\]Y\Ý	Ë	ÝÛÜšÙ\‹X][™[˜ÙK\™\]Y\Ý	ÊHˆˆ”ÑSPÕY]H”“ÓH[[™×ÛÜ\˜][Û—ÙØÝ[Y[ÈÒT‘HYIHS‘ÝÛ™\—ØÛÛ\[žWÚYIˆS‘ØÝ[Y[Ý\HSˆ
+	ÝÛÜšÙ\‹XÙ\YšXØ]K\™\]Y\Ý	Ë	ÝÛÜšÙ\‹X][™[˜ÙK\™\]Y\Ý	ÊH‹YZ[ˆÈÙØÝ[Y[YHˆÙØÝ[Y[YÝÛ™\ÛÛ\[žRYJNÃBˆYˆ
+YØÝ[Y[ÖÌJH™]\›ˆ™\ËœÝ]\Ê
+KšœÛÛŠÈ\œ›ÜŽˆ	ú¬¬;'«:ã ; à{'a;,/»)à:ê®ûe¢;"­zââ:âé‰ÈJNÃBˆÛÛœÝ™\]Y\ÝHØÝ[Y[ÖÌK™]HßNÃBˆ]][™[˜ÙP\YYH˜[ÙNÃBˆYˆ
+Ý]\ÈOOH	û"®{'n	È	‰ˆ™\]Y\ÝšÚ[™OOH	Ø][™[˜ÙIÊHÃBˆÛÛœÝ\XØ][Û’YH[X™\Š™\]Y\Ý˜\XØ][Û’Y
+NÃBˆÛÛœÝ™\]Y\Ý]HHÝš[™Ê™\]Y\Ýœ™\]Y\Ý]H	ÉÊNÃBˆYˆ
+X\XØ][Û’YK×—ÍKWÌŸKWÌŸIË\Ý
+™\]Y\Ý]JJH™]\›ˆ™\ËœÝ]\Ê
+KšœÛÛŠÈ\œ›ÜŽˆ	ú­ï;`ç:ì'; ç{'o;'m;%áºâ¥;"è;,«{'¡zââ:âéˆ:­ï:èg;'¤;%ä:¬£:à¨;)ç:éo;!(;`ç{em:âé;"ç;"è;,«{ef:ãá:ègH;%b:à­;em;(ï;!.;&¥‰ÈJNÃBˆÛÛœÝ[ÜHH]ØZ]‹œ]Y\žJBˆYZ[ƒBˆÈ	ÔÑSPÕY[\ÞY\—Û›ÝH”“ÓH[[™×Ú›Ø—Ø\XØ][ÛœÈÒT‘HYIIÃBˆˆ”ÑSPÕKšYK™[\ÞY\—Û›ÝH”“ÓH[[™×Ú›Ø—Ø\XØ][ÛœÈH“ÒSˆ[[™×Ú›Ø—ÜÜÝÈˆÓˆKš›Ø—ÚYIÙ‹Iß‹šYŽ^ÒT‘HKšYIHS‘‹™]KO‰ÛÝÛ™\ÛÛ\[žRY	ÏIˆ‹BˆYZ[ˆÈØ\XØ][Û’YHˆØ\XØ][Û’YÝÛ™\ÛÛ\[žRYCBˆ
+NÃBˆYˆ
+\[ÜVÌJH™]\›ˆ™\ËœÝ]\Ê
+KšœÛÛŠÈ\œ›ÜŽˆ	ú­ï;`ç:ì&;& H:ã ; àH;'n:è){'a;,/»)à:ê®ûe¢;"­zââ:âé‰ÈJNÃBˆÛÛœÝ™]š[Ý\ÈH[ÜVÌK™[\ÞY\—Û›ÝHßNÃBˆÛÛœÝÜ\˜][ÛˆH™]š[Ý\Ë›Ü\˜][ÛˆßNÃBˆÛÛœÝ[ÛH™\]Y\Ý]KœÛXÙJÊNÃBˆÛÛœÝ^HHÝš[™Ê[X™\Š™\]Y\Ý]KœÛXÙJL
+JJNÃBˆÛÛœÝØ[[™\ˆHÜ\˜][Û‹˜][™[˜ÙPØ[[™\ˆ	‰ˆ\[ÙˆÜ\˜][Û‹˜][™[˜ÙPØ[[™\ˆOOH	ÛØš™XÝ	ÈÈÜ\˜][Û‹˜][™[˜ÙPØ[[™\ˆˆÈ[ÛÎˆßKÛÜÙY[ÛÎˆßHNÃBˆYˆ
+Ø[[™\‹˜ÛÜÙY[ÛÏË–Û[ÛJH™]\›ˆ™\ËœÝ]\ÊJKšœÛÛŠÈ\œ›ÜŽˆ	ûem:âîH;&å:­ï;`ç:¬ ;'m:ëî:éâ:¬$:ä&;%­;"®{'n:à­;&ª{'a;'¤:ãæH:ì&;& {eh;"&;%á»"­zââ:âéˆ:éâ:¬$;-ê;!£;fá:âé;"ç;"®{'n;em;(ï;!.;&¥‰ÈJNÃBˆÛÛœÝÝ\œÈHÈ	û%ì;,*	Îˆ	úì&;,*	Îˆ	û(l;aí	Îˆ	û)à:¬ H; «;'(;!'	ÎˆÈNÃBˆÛÛœÝÛ^HHØ[[™\‹›[ÛÏË–Û[ÛOË™^\ÏË–Ù^WHßNÃBˆÛÛœÝ^\ÈHÈ‹‹ŠØ[[™\‹›[ÛÏË–Û[ÛOË™^\ÈßJHNÃBˆ^\ÖÙ^WHHÃBˆ‹‹›Û^KBˆ˜\ÚXÎˆÛ^K˜˜\ÚXÈOOH[™Yš[™YÈÛ^K˜˜\ÚXÈˆ
+Ý\œÖÜ™\]Y\Ýœ™\]Y\Ý\WHÏÈ
+KBˆÝ™\[YNˆÛ^K›Ý™\[YHOOH[™Yš[™YÈÛ^K›Ý™\[YHˆBˆšYÚˆÛ^K›šYÚOOH[™Yš[™YÈÛ^K›šYÚˆBˆ\›Ý˜[Ý]\Îˆ™\]Y\Ýœ™\]Y\Ý\H	ú­ï;`ç;"®{'n	ËBˆ\›Ý˜[ØÝ[Y[YˆØÝ[Y[YBˆ\›Ý™Y]ˆ™]È]J
+KÒTÓÔÝš[™Ê
+CBˆNÃBˆÛÛœÝ][™[˜ÙPØ[[™\ˆHÈ‹‹˜Ø[[™\‹[ÛÎˆÈ‹‹ŠØ[[™\‹›[ÛÈßJKÛ[ÛNˆÈ‹‹ŠØ[[™\‹›[ÛÏË–Û[ÛHßJK^\ÈHKÛÜÙY[ÛÎˆÈ‹‹ŠØ[[™\‹˜ÛÜÙY[ÛÈßJHHNÃBˆ]ØZ]‹œ]Y\žJ	ÕTUH[[™×Ú›Ø—Ø\XØ][ÛœÈÑU[\ÞY\—Û›ÝOINŽšœÛÛ˜ˆÒT‘HYI‰ËÒ”ÓÓ‹œÝš[™ÚYžJÈ‹‹œ™]š[Ý\ËÜ\˜][ÛŽˆÈ‹‹›Ü\˜][Û‹][™[˜ÙPØ[[™\‹\]Y]ˆ™]È]J
+KÒTÓÔÝš[™Ê
+HHJK\XØ][Û’YJNÃBˆ][™[˜ÙP\YYHYNÃBˆCBˆÛÛœÝ™^HÈ‹‹œ™\]Y\ÝÝ]\ËXÚYY]ˆ™]È]J
+KÒTÓÔÝš[™Ê
+K][™[˜ÙP\YYNÃBˆ]ØZ]‹œ]Y\žJ	ÕTUH[[™×ÛÜ\˜][Û—ÙØÝ[Y[ÈÑU]OINŽšœÛÛ˜‹\]YØ]S“ÕÊ
+HÒT‘HYI‰ËÒ”ÓÓ‹œÝš[™ÚYžJ™^
+KØÝ[Y[YJNÃBˆ™]\›ˆ™\ËœÝ]\ÊŒ
+KšœÛÛŠÈÚÎˆYKY\ÜØYÙNˆ][™[˜ÙP\YYÈ	û"®{'n;e¢:¬è;em:âîH:à¨;)ç:­ï;`ç;dg;%ä;'¤:ãæH:ì&;& {e¢;"­zââ:âé‰Èˆ	ÜÝ]\ßH;,¦:é«;e¢;"­zââ:âé˜JNÃBˆCBˆYˆ
+[œ]˜XÝ[ÛˆOOH	Ü][ÝK\Ø]™IÈ[œ]˜XÝ[ÛˆOOH	ØÛÛ˜XÝ\Ø]™IÈ[œ]˜XÝ[ÛˆOOH	Ù\Ü]ÚXÛÛ˜XÝ\Ø]™IÈ[œ]˜XÝ[ÛˆOOH	Ø\ÜÚYÛ›Y[]Ë\Ø]™IÈ[œ]˜XÝ[ÛˆOOH	Ú[›ÚXÙK\Ø]™IÈ[œ]˜XÝ[ÛˆOOH	Ú›Ø‹XÛY[\Ø]™IÈ[œ]˜XÝ[ÛˆOOH	Ü^\›ÛXØ[Ý[][Û‹\Ø]™IÈ[œ]˜XÝ[ÛˆOOH	Ü^\Û\Y[]™\žK\Ø]™IÈ[œ]˜XÝ[ÛˆOOH	ÝÛÜšÙ\‹[›ÝXÙK\Ø]™IÈ[œ]˜XÝ[ÛˆOOH	ÙšY[YØÝ[Y[\Ø]™IÊHÃBˆÛÛœÝØÝ[Y[\HH[œ]˜XÝ[ÛˆOOH	ÙšY[YØÝ[Y[\Ø]™IÈÈ	ÙšY[YØÝ[Y[	Èˆ[œ]˜XÝ[ÛˆOOH	Ü][ÝK\Ø]™IÈÈ	Ü][ÝIÈˆ[œ]˜XÝ[ÛˆOOH	Ú[›ÚXÙK\Ø]™IÈÈ	Ú[›ÚXÙIÈˆ[œ]˜XÝ[ÛˆOOH	Ú›Ø‹XÛY[\Ø]™IÈÈ	Ú›Ø‹XÛY[	Èˆ[œ]˜XÝ[ÛˆOOH	Ü^\›ÛXØ[Ý[][Û‹\Ø]™IÈÈ	Ü^\›ÛXØ[Ý[][Û‰Èˆ[œ]˜XÝ[ÛˆOOH	Ü^\Û\Y[]™\žK\Ø]™IÈÈ	Ü^\Û\Y[]™\žIÈˆ[œ]˜XÝ[ÛˆOOH	ÝÛÜšÙ\‹[›ÝXÙK\Ø]™IÈÈ	ÝÛÜšÙ\‹[›ÝXÙIÈˆ[œ]˜XÝ[ÛˆOOH	Ù\Ü]ÚXÛÛ˜XÝ\Ø]™IÈÈ	Ù\Ü]ÚXÛÛ˜XÝ	Èˆ[œ]˜XÝ[ÛˆOOH	Ø\ÜÚYÛ›Y[]Ë\Ø]™IÈÈ	Ø\ÜÚYÛ›Y[]ÉÈˆ	ØÛÛ˜XÝ	ÎÃBˆÛÛœÝØÝ[Y[H[œ]™ØÝ[Y[	‰ˆ\[Ùˆ[œ]™ØÝ[Y[OOH	ÛØš™XÝ	ÈÈ[œ]™ØÝ[Y[ˆßNÃBˆYˆ
+ØÝ[Y[\HOOH	ÝÛÜšÙ\‹[›ÝXÙIÊHÃBˆØÝ[Y[œØÛÜHHYZ[ˆÈ	Ø[	Èˆ	ØÛÛ\[žIÎÃBˆYˆ
+ÝÛ™\ÛÛ\[žRY
+HØÝ[Y[˜ÛÛ\[žRYHÝÛ™\ÛÛ\[žRYÃBˆCBˆÛÛœÝ›ÝÜÈH]ØZ]‹œ]Y\žJBˆ	ÒS”ÑT•S•È[[™×ÛÜ\˜][Û—ÙØÝ[Y[È
+ÝÛ™\—ØÛÛ\[žWÚYØÝ[Y[Ý\K]JHSQTÈ
+	K	‹	ÎŽšœÛÛ˜ŠH‘UT“’S‘ÈY\]YØ]	ËBˆÛÝÛ™\ÛÛ\[žRYØÝ[Y[\K”ÓÓ‹œÝš[™ÚYžJØÝ[Y[
+WCBˆ
+NÃBˆ™]\›ˆ™\ËœÝ]\ÊŒJKšœÛÛŠÈÚÎˆYKYˆ›ÝÜÖÌKšY\]Y]ˆ›ÝÜÖÌK\]YØ]JNÃBˆCBƒBˆÛÛœÝ\YH[X™\Š[œ]˜\XØ][Û’Y
+NÃBˆYˆ
+X\Y
+H™]\›ˆ™\ËœÝ]\Ê
+KšœÛÛŠÈ\œ›ÜŽˆ	úã ; àH;'n:è){'a;fe{'n;em;(ï;!.;&¥‰ÈJNÃBˆÛÛœÝ›ÝÜÈH]ØZ]‹œ]Y\žJBˆYZ[ƒBˆÈ	ÔÑSPÕ[\ÞY\—Û›ÝH”“ÓH[[™×Ú›Ø—Ø\XØ][ÛœÈÒT‘HYIIÃBˆˆ”ÑSPÕK™[\ÞY\—Û›ÝH”“ÓH[[™×Ú›Ø—Ø\XØ][ÛœÈH“ÒSˆ[[™×Ú›Ø—ÜÜÝÈˆÓˆKš›Ø—ÚYIÙ‹Iß‹šYŽ^ÒT‘HKšYIHS‘‹™]KO‰ÛÝÛ™\ÛÛ\[žRY	ÏIˆ‹BˆYZ[ˆÈØ\YHˆØ\YÝÛ™\ÛÛ\[žRYCBˆ
+NÃBˆYˆ
+\›ÝÜÖÌJH™]\›ˆ™\ËœÝ]\Ê
+KšœÛÛŠÈ\œ›ÜŽˆ	ú­£;eg;'m;%áº¬l:à¦:ã ; àH;'n:è){'m;%á»"­zââ:âé‰ÈJNÃBˆÛÛœÝ™]š[Ý\ÈH›ÝÜÖÌK™[\ÞY\—Û›ÝHßNÃBˆÛÛœÝÜ\˜][ÛˆHÃBˆ‹‹Š™]š[Ý\Ë›Ü\˜][ÛˆßJKBˆ][™[˜ÙNˆÝš[™Ê[œ]˜][™[˜ÙH	ÉÊKBˆÛÜšÑ^\ÎˆÝš[™Ê[œ]ÛÜšÑ^\È	ÉÊKBˆÛÜšÒÝ\œÎˆÝš[™Ê[œ]ÛÜšÒÝ\œÈ	ÉÊKBˆZ[T˜]NˆÝš[™Ê[œ]™Z[T˜]H	ÉÊKBˆÜ›ÜÜÔ^NˆÝš[™Ê[œ]™Ü›ÜÜÔ^H	ÉÊKBˆ™]^NˆÝš[™Ê[œ]›™]^H	ÉÊKBˆ^Q]NˆÝš[™Ê[œ]œ^Q]H	ÉÊKBˆ\ÜÚYÛ›Y[]NˆÝš[™Ê[œ]˜\ÜÚYÛ›Y[]H™]š[Ý\Ë›Ü\˜][ÛË˜\ÜÚYÛ›Y[]H	ÉÊKBˆ™\ÚYÛ˜][Û‘]NˆÝš[™Ê[œ]œ™\ÚYÛ˜][Û‘]H™]š[Ý\Ë›Ü\˜][ÛËœ™\ÚYÛ˜][Û‘]H	ÉÊKBˆ˜[šÓ˜[YNˆÝš[™Ê[œ]˜˜[šÓ˜[YH™]š[Ý\Ë›Ü\˜][ÛË˜˜[šÓ˜[YH	ÉÊKBˆ˜[šÐÛÙNˆÝš[™Ê[œ]˜˜[šÐÛÙH™]š[Ý\Ë›Ü\˜][ÛË˜˜[šÐÛÙH	ÉÊKBˆXØÛÝ[[X™\ŽˆÝš[™Ê[œ]˜XØÛÝ[[X™\ˆ™]š[Ý\Ë›Ü\˜][ÛË˜XØÛÝ[[X™\ˆ	ÉÊKBˆXØÛÝ[Û\ŽˆÝš[™Ê[œ]˜XØÛÝ[Û\ˆ™]š[Ý\Ë›Ü\˜][ÛË˜XØÛÝ[Û\ˆ	ÉÊKBˆ\ÜÚYÛ™Y›Ø’YˆÝš[™Ê[œ]˜\ÜÚYÛ™Y›Ø’Y™]š[Ý\Ë›Ü\˜][ÛË˜\ÜÚYÛ™Y›Ø’Y	ÉÊKBˆÝ\›T˜]NˆÝš[™Ê[œ]šÝ\›T˜]H™]š[Ý\Ë›Ü\˜][ÛËšÝ\›T˜]H	ÌLÌŒ	ÊKBˆÛÜšÕ\NˆÝš[™Ê[œ]ÛÜšÕ\H™]š[Ý\Ë›Ü\˜][ÛËÛÜšÕ\H	û(ï:¬!	ÊKBˆÛØÚX[[œÝ\˜[˜ÙNˆ[œ]œÛØÚX[[œÝ\˜[˜ÙH	‰ˆ\[Ùˆ[œ]œÛØÚX[[œÝ\˜[˜ÙHOOH	ÛØš™XÝ	ÈÈ[œ]œÛØÚX[[œÝ\˜[˜ÙHˆ
+™]š[Ý\Ë›Ü\˜][ÛËœÛØÚX[[œÝ\˜[˜ÙHßJKBˆ][™[˜ÙPØ[[™\Žˆ[œ]˜][™[˜ÙPØ[[™\ˆ	‰ˆ\[Ùˆ[œ]˜][™[˜ÙPØ[[™\ˆOOH	ÛØš™XÝ	ÈÈ[œ]˜][™[˜ÙPØ[[™\ˆˆ
+™]š[Ý\Ë›Ü\˜][ÛË˜][™[˜ÙPØ[[™\ˆßJKBˆ^\›ÛÛÛ™š\›YYˆ\[Ùˆ[œ]œ^\›ÛÛÛ™š\›YYOOH	Ø›ÛÛX[‰ÈÈ[œ]œ^\›ÛÛÛ™š\›YYˆ›ÛÛX[Š™]š[Ý\Ë›Ü\˜][ÛËœ^\›ÛÛÛ™š\›YY
+KBˆ^\›ÛÛÛ™š\›YY[ÛˆÝš[™Ê[œ]œ^\›ÛÛÛ™š\›YY[Û™]š[Ý\Ë›Ü\˜][ÛËœ^\›ÛÛÛ™š\›YY[Û	ÉÊKœÛXÙJÊKBˆ^\›ÛÛÛ™š\›YY]ˆÝš[™Ê[œ]œ^\›ÛÛÛ™š\›YY]™]š[Ý\Ë›Ü\˜][ÛËœ^\›ÛÛÛ™š\›YY]	ÉÊKœÛXÙJ
+KBˆ^\›ÛÝ[[X\žNˆ[œ]œ^\›ÛÝ[[X\žH	‰ˆ\[Ùˆ[œ]œ^\›ÛÝ[[X\žHOOH	ÛØš™XÝ	ÈÈ[œ]œ^\›ÛÝ[[X\žHˆ
+™]š[Ý\Ë›Ü\˜][ÛËœ^\›ÛÝ[[X\žHßJKBˆ\]Y]ˆ™]È]J
+KÒTÓÔÝš[™Ê
+CBˆNÃBˆ]ØZ]‹œ]Y\žJ	ÕTUH[[™×Ú›Ø—Ø\XØ][ÛœÈÑU[\ÞY\—Û›ÝOINŽšœÛÛ˜ˆÒT‘HYI‰ËÒ”ÓÓ‹œÝš[™ÚYžJÈ‹‹œ™]š[Ý\ËÜ\˜][ÛˆJK\YJNÃBˆ™]\›ˆ™\ËœÝ]\ÊŒ
+KšœÛÛŠÈÚÎˆYHJNÃBˆCBƒBˆYˆ
+™\K›Y]ÙOOH	ÑÑU	ÊHÃBˆÛÛœÝ›ØœÈH]ØZ]‹œ]Y\žJBˆYZ[ƒBˆÈ”ÑSPÕY]H”“ÓH[[™×Ú›Ø—ÜÜÝÈÒT‘HÝ]\ÏIØXÝ]™IÈS‘ÓÐSTÐÑJ]KO‰Û\Ý[™Õ\IË	Ú\š[™ÉÊO‰ØŒ˜‰ÈÔ‘Tˆ–H\]YØ]TÐÈƒBˆˆ”ÑSPÕY]H”“ÓH[[™×Ú›Ø—ÜÜÝÈÒT‘HÝ]\ÏIØXÝ]™IÈS‘ÓÐSTÐÑJ]KO‰Û\Ý[™Õ\IË	Ú\š[™ÉÊO‰ØŒ˜‰ÈS‘]KO‰ÛÝÛ™\ÛÛ\[žRY	ÏIHÔ‘Tˆ–H\]YØ]TÐÈ‹BˆYZ[ˆÈ×HˆÛÝÛ™\ÛÛ\[žRYCBˆ
+NÃBˆÛÛœÝ[ÜHH]ØZ]‹œ]Y\žJBˆYZ[ƒBˆÈ”ÑSPÕKšYKš›Ø—ÚYKš›Ø—Ý]KKÛÜšÙ\—Ù]KKœÝ]\ËK™[\ÞY\—Û›ÝKK˜Ü™X]YØ]”“ÓH[[™×Ú›Ø—Ø\XØ][ÛœÈH“ÒSˆ[[™×Ú›Ø—ÜÜÝÈˆÓˆKš›Ø—ÚYIÙ‹Iß‹šYŽ^ÒT‘HÓÐSTÐÑJ‹™]KO‰Û\Ý[™Õ\IË	Ú\š[™ÉÊO‰ØŒ˜‰ÈÔ‘Tˆ–HK˜Ü™X]YØ]TÐÈSRUÌƒBˆˆ”ÑSPÕKšYKš›Ø—ÚYKš›Ø—Ý]KKÛÜšÙ\—Ù]KKœÝ]\ËK™[\ÞY\—Û›ÝKK˜Ü™X]YØ]”“ÓH[[™×Ú›Ø—Ø\XØ][ÛœÈH“ÒSˆ[[™×Ú›Ø—ÜÜÝÈˆÓˆKš›Ø—ÚYIÙ‹Iß‹šYŽ^ÒT‘HÓÐSTÐÑJ‹™]KO‰Û\Ý[™Õ\IË	Ú\š[™ÉÊO‰ØŒ˜‰ÈS‘‹™]KO‰ÛÝÛ™\ÛÛ\[žRY	ÏIHÔ‘Tˆ–HK˜Ü™X]YØ]TÐÈSRUÌ‹BˆYZ[ˆÈ×HˆÛÝÛ™\ÛÛ\[žRYCBˆ
+NÃBˆÛÛœÝY[X™\’YÈH[ÜK›X\
+][HOˆ[X™\Š][KÛÜšÙ\—Ù]OË›Y[X™\’Y
+JK™š[\Š[X™\‹š\ÔØY™R[YÙ\ŠNÃBˆYˆ
+Y[X™\’YË›[™Ý
+HÃBˆÛÛœÝÛÜšÙ\œÈH]ØZ]‹œ]Y\žJ”ÑSPÕY]H”“ÓH[[™×ÜÚYÛ\Ø\XØ][ÛœÈÒT‘HÚ[™IÝÛÜšÙ\‰ÈS‘YPS–J	NŽ˜šYÚ[×JH‹ÛY[X™\’Y×JNÃBˆÛÛœÝÝÐžSY[X™\’YH™]ÈX\
+ÛÜšÙ\œË›X\
+ÛÜšÙ\ˆOˆÓ[X™\ŠÛÜšÙ\‹šY
+KÝš[™ÊÛÜšÙ\‹™]OËœÝÔ]	ÉÊWJJNÃBˆ[ÜK™›Ü‘XXÚ
+\œÛÛˆOˆÃBˆÛÛœÝY[X™\’YH[X™\Š\œÛÛ‹ÛÜšÙ\—Ù]OË›Y[X™\’Y
+NÃBˆÛÛœÝÝÔ]HÝÐžSY[X™\’Y™Ù]
+Y[X™\’Y
+NÃBˆYˆ
+ÝÔ]
+H\œÛÛ‹ÛÜšÙ\—Ù]HHÈ‹‹œ\œÛÛ‹ÛÜšÙ\—Ù]KÝÔ]ÝÕ\›ˆÜ\˜][Û”ÝÕ\›
+ÝÔ]ÝÛ™\ÛÛ\[žRYYZ[ŠHNÃBˆJNÃBˆCBˆÛÛœÝØÝ[Y[ÈH]ØZ]‹œ]Y\žJBˆYZ[ƒBˆÈ	ÔÑSPÕYØÝ[Y[Ý\K]K\]YØ]”“ÓH[[™×ÛÜ\˜][Û—ÙØÝ[Y[ÈÔ‘Tˆ–H\]YØ]TÐÈSRUL	ÃBˆˆ	ÔÑSPÕYØÝ[Y[Ý\K]K\]YØ]”“ÓH[[™×ÛÜ\˜][Û—ÙØÝ[Y[ÈÒT‘HÝÛ™\—ØÛÛ\[žWÚYIHÔ‘Tˆ–H\]YØ]TÐÈSRUL	ËBˆYZ[ˆÈ×HˆÛÝÛ™\ÛÛ\[žRYCBˆ
+NÃBˆÛÛœÝY\ÜØYÙ\ÈH]ØZ]‹œ]Y\žJBˆYZ[ƒBˆÈ”ÑSPÕY™XÚ\Y[ÚYÜ™X]YØ]™XYØ]”“ÓH[[™×ÛY\ÜØYÙ\ÈÒT‘HÙ[™\—ÚÚ[™IØYZ[‰ÈS‘Ù[™\—ÚYTÈ•SÔ‘Tˆ–HÜ™X]YØ]TÐÈSRUÌƒBˆˆ”ÑSPÕY™XÚ\Y[ÚYÜ™X]YØ]™XYØ]”“ÓH[[™×ÛY\ÜØYÙ\ÈÒT‘HÙ[™\—ÚÚ[™IØÛÛ\[žIÈS‘Ù[™\—ÚYIHÔ‘Tˆ–HÜ™X]YØ]TÐÈSRUÌ‹BˆYZ[ˆÈ×HˆÓ[X™\ŠÛÛ\[žKšY
+WCBˆ
+NÃBˆÛÛœÝ^\›˜[\›Ý˜[ÈH]ØZ]‹œ]Y\žJBˆYZ[ƒBˆÈ	ÔÑSPÕYØÝ[Y[ÚYØÝ[Y[Ý\K™XÚ\Y[Û˜[YK™XÚ\Y[Ù[XZ[Ý]\ËÜ[™YØ]™\ÜÛ™YØ]^\™\×Ø]Ü™X]YØ]]™[È”“ÓH[[™×Ù^\›˜[Ø\›Ý˜[ÈÔ‘Tˆ–HÜ™X]YØ]TÐÈSRUL	ÃBˆˆ	ÔÑSPÕYØÝ[Y[ÚYØÝ[Y[Ý\K™XÚ\Y[Û˜[YK™XÚ\Y[Ù[XZ[Ý]\ËÜ[™YØ]™\ÜÛ™YØ]^\™\×Ø]Ü™X]YØ]]™[È”“ÓH[[™×Ù^\›˜[Ø\›Ý˜[ÈÒT‘HÝÛ™\—ØÛÛ\[žWÚYIHÔ‘Tˆ–HÜ™X]YØ]TÐÈSRUL	ËBˆYZ[ˆÈ×HˆÛÝÛ™\ÛÛ\[žRYCBˆ
+NÃBˆ]ÛÛ\[žS˜[YHH	ÉÎÃBˆYˆ
+ÛÛ\[žJHÃBˆÛÛœÝÛÛ\[žT›ÝÜÈH]ØZ]‹œ]Y\žJ	ÔÑSPÕ]H”“ÓH[[™×ÜÚYÛ\Ø\XØ][ÛœÈÒT‘HYIHSRUIËÓ[X™\ŠÛÛ\[žKšY
+WJNÃBˆÛÛœÝÛÛ\[žQ]HHÛÛ\[žT›ÝÜÖÌOË™]HßNÃBˆÛÛ\[žS˜[YHHÝš[™ÊÛÛ\[žQ]K˜ÛÛ\[žS˜[YHÛÛ\[žQ]K˜ÛÛ\[žHÛÛ\[žQ]K›˜[YH	ÉÊKš[J
+NÃBˆCBˆ™]\›ˆ™\ËœÝ]\ÊŒ
+KšœÛÛŠÈ›ØœË[ÜKØÝ[Y[ËY\ÜØYÙ\Ë^\›˜[\›Ý˜[Ë›ÛNˆYZ[ˆÈ	ØYZ[‰Èˆ	ØÛÛ\[žIËÛÛ\[žS˜[YHJNÃBˆCBƒBˆ™]\›ˆ™\ËœÝ]\ÊJKšœÛÛŠÈ\œ›ÜŽˆ	ûeâ;&ªzä&;)à;%b»'`;&¥;,«{'¡zââ:âé‰ÈJNÃBˆHØ]Ú
+\œ›ÜŠHÃBˆ™]\›ˆ™\ËœÝ]\ÊL
+KšœÛÛŠÈ\œ›ÜŽˆ\œ›Ü’Ú[™
+\œ›ÜŠHJNÃBˆCBŸNÃBƒB

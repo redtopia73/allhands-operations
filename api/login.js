@@ -11,7 +11,7 @@ module.exports = async (req, res) => {
       const tokenHash = crypto.createHash('sha256').update(String(req.query.invite)).digest('hex');
       const db = await ensureTables();
       const invitations = await db.query(
-        "SELECT id,data FROM allhands_operation_documents WHERE document_type='worker-attendance-invite' AND data->>'tokenHash'=$1 AND COALESCE(data->>'usedAt','')='' AND COALESCE(data->>'revokedAt','')='' AND (data->>'expiresAt')::timestamptz>NOW() ORDER BY created_at DESC LIMIT 1",
+        "SELECT id,data FROM allhands_operation_documents WHERE document_type='worker-attendance-invite' AND data->>'tokenHash'=$1 AND COALESCE(data->>'revokedAt','')='' AND (data->>'expiresAt')::timestamptz>NOW() ORDER BY created_at DESC LIMIT 1",
         [tokenHash]
       );
       const invitation = invitations[0];
@@ -20,18 +20,17 @@ module.exports = async (req, res) => {
       const workers = await db.query("SELECT id FROM allhands_signup_applications WHERE id=$1 AND kind='worker' AND status='active' LIMIT 1", [workerId]);
       if (!workers[0]) throw new Error('invalid-worker');
       const usedAt = new Date().toISOString();
-      const consumed = await db.query(
-        "UPDATE allhands_operation_documents SET data=jsonb_set(data,'{usedAt}',to_jsonb($1::text),true),updated_at=NOW() WHERE id=$2 AND COALESCE(data->>'usedAt','')='' RETURNING id",
+      await db.query(
+        "UPDATE allhands_operation_documents SET data=jsonb_set(jsonb_set(data,'{usedAt}',to_jsonb(CASE WHEN COALESCE(data->>'usedAt','')='' THEN $1::text ELSE data->>'usedAt' END),true),'{lastUsedAt}',to_jsonb($1::text),true),updated_at=NOW() WHERE id=$2",
         [usedAt, invitation.id]
       );
-      if (!consumed[0]) throw new Error('used-invite');
       const payload = Buffer.from(JSON.stringify({ role:'worker', id:workerId, expires:Date.now()+2592000000 })).toString('base64url');
       const workerCookie = `allhands_worker=${payload}.${sign(payload, secret)}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=2592000`;
       res.setHeader('Set-Cookie', [workerCookie,'allhands_admin=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0','allhands_company=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0']);
       res.setHeader('Location', '/attendance.html?install=1');
       return res.status(302).end();
     } catch {
-      return res.status(401).send('출퇴근 앱 링크가 만료되었거나 이미 사용되었습니다. 업체 담당자에게 새 링크를 요청해 주세요.');
+      return res.status(401).send('출퇴근 앱 링크가 만료되었거나 새 링크로 교체되었습니다. 업체 담당자에게 새 링크를 요청해 주세요.');
     }
   }
   if (req.method === 'GET' && req.query?.sso) {
