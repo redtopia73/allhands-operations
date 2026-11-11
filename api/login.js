@@ -24,7 +24,8 @@ module.exports = async (req, res) => {
       const maxAge=session.role === 'admin' ? 28800 : session.role === 'worker' ? 2592000 : 86400;
       const sessionCookie=`${cookieName}=${targetPayload}.${sign(targetPayload, process.env.ADMIN_SESSION_SECRET)}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=${maxAge}`;
       res.setHeader('Set-Cookie', session.role === 'worker' ? [sessionCookie,'allhands_admin=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0','allhands_company=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0'] : sessionCookie);
-      res.setHeader('Location', session.role === 'worker' ? '/worker.html' : '/');
+      const workerTarget = req.query?.next === 'attendance' ? '/attendance.html' : '/worker.html';
+      res.setHeader('Location', session.role === 'worker' ? workerTarget : '/');
       return res.status(302).end();
     } catch {
       return res.status(401).send('운영관리 자동 로그인이 만료되었거나 올바르지 않습니다. 올핸잡에서 다시 시도해 주세요.');
@@ -55,3 +56,4 @@ module.exports = async (req, res) => {
     return res.status(500).json({ error: errorKind(error) });
   }
 };
+
