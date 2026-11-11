@@ -25,6 +25,45 @@ module.exports = async (req, res) => {
 
     if (req.method === 'POST') {
       const input = body(req);
+      if (input.action === 'worker-attendance-invite') {
+        const applicationId = Number(input.applicationId);
+        if (!Number.isSafeInteger(applicationId)) return res.status(400).json({ error: '근로자 정보를 확인해 주세요.' });
+        const people = await db.query(
+          admin
+            ? "SELECT a.id,a.worker_data,a.employer_note,j.data AS job_data FROM allhands_job_applications a JOIN allhands_job_posts j ON a.job_id='db-'||j.id::text WHERE a.id=$1"
+            : "SELECT a.id,a.worker_data,a.employer_note,j.data AS job_data FROM allhands_job_applications a JOIN allhands_job_posts j ON a.job_id='db-'||j.id::text WHERE a.id=$1 AND j.data->>'ownerCompanyId'=$2",
+          admin ? [applicationId] : [applicationId, ownerCompanyId]
+        );
+        const person = people[0];
+        const workerId = Number(person?.worker_data?.memberId);
+        const operation = person?.employer_note?.operation || {};
+        if (!person) return res.status(404).json({ error: '권한이 없거나 근로자를 찾지 못했습니다.' });
+        if (!Number.isSafeInteger(workerId)) return res.status(400).json({ error: '올핸잡 구직회원과 연결된 근로자만 출퇴근 앱 링크를 만들 수 있습니다.' });
+        if (!String(operation.assignmentDate || '').trim() || String(operation.resignationDate || '').trim()) return res.status(400).json({ error: '현재 근무지에 배치된 근로자만 링크를 만들 수 있습니다.' });
+        const workers = await db.query("SELECT id,data FROM allhands_signup_applications WHERE id=$1 AND kind='worker' AND status='active' LIMIT 1", [workerId]);
+        if (!workers[0]) return res.status(404).json({ error: '활성 상태인 구직회원 정보를 찾지 못했습니다.' });
+        const token = crypto.randomBytes(32).toString('base64url');
+        const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
+        const now = new Date().toISOString();
+        const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+        const invitationOwnerId = ownerCompanyId || String(person.job_data?.ownerCompanyId || '');
+        const invitation = {
+          applicationId: String(applicationId), workerId: String(workerId),
+          workerName: String(person.worker_data?.name || workers[0].data?.name || '근로자').slice(0, 120),
+          tokenHash, createdAt: now, expiresAt, usedAt: ''
+        };
+        await db.query(
+          "UPDATE allhands_operation_documents SET data=jsonb_set(data,'{revokedAt}',to_jsonb($1::text),true),updated_at=NOW() WHERE document_type='worker-attendance-invite' AND owner_company_id=$2 AND data->>'applicationId'=$3 AND COALESCE(data->>'usedAt','')=''",
+          [now, invitationOwnerId, String(applicationId)]
+        );
+        await db.query(
+          'INSERT INTO allhands_operation_documents (owner_company_id,document_type,data) VALUES ($1,$2,$3::jsonb)',
+          [invitationOwnerId, 'worker-attendance-invite', JSON.stringify(invitation)]
+        );
+        const host = String(req.headers['x-forwarded-host'] || req.headers.host || 'allhands-operations.vercel.app').split(',')[0].trim();
+        const protocol = String(req.headers['x-forwarded-proto'] || 'https').split(',')[0].trim() || 'https';
+        return res.status(201).json({ ok: true, inviteUrl: `${protocol}://${host}/api/login?invite=${encodeURIComponent(token)}`, expiresAt });
+      }
       if (input.action === 'external-approval-create') {
         const documentId = Number(input.documentId);
         const recipientName = String(input.recipientName || '').trim().slice(0, 120);
