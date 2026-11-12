@@ -3,7 +3,8 @@
   const urlFor = view => `${location.pathname}${location.search}#${encodeURIComponent(view)}`;
   let restoring = false;
 
-  history.replaceState({ source, view: 'dashboard' }, '', urlFor('dashboard'));
+  const initialView = decodeURIComponent(location.hash.slice(1)) || 'dashboard';
+  history.replaceState({ source, view: initialView }, '', urlFor(initialView));
   const applyView = window.setView;
   window.setView = view => {
     const result = applyView(view);
@@ -23,4 +24,13 @@
       restoring = false;
     }
   });
+
+  if (initialView !== 'dashboard') {
+    restoring = true;
+    try {
+      window.setView(initialView);
+    } finally {
+      restoring = false;
+    }
+  }
 })();
