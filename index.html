@@ -504,7 +504,7 @@
     window.clientMasterForName=name=>(window.clientMasters||[]).find(client=>String(client.name||'').trim()===String(name||'').trim());
     document.addEventListener('click',event=>{
       const button=event.target.closest('button');
-      if(!button||typeof button.onclick==='function')return;
+      if(!button)return;
       let handled=true;
       if(button.id==='clientMasterSave')window.saveClientMaster();
       else if(button.closest('#manualWorkerPanel')&&button.classList.contains('primary'))window.saveManualWorker();
