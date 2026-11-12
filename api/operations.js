@@ -45,7 +45,7 @@ module.exports = async (req, res) => {
         const token = crypto.randomBytes(32).toString('base64url');
         const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
         const now = new Date().toISOString();
-        const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+        const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
         const invitationOwnerId = ownerCompanyId || String(person.job_data?.ownerCompanyId || '');
         const invitation = {
           applicationId: String(applicationId), workerId: String(workerId),
