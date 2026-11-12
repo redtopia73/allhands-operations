@@ -21,5 +21,7 @@
   const initialView = decodeURIComponent(location.hash.slice(1));
   if (initialView && initialView !== 'dashboard') {
     queueMicrotask(() => openView(initialView));
+    setTimeout(() => openView(initialView), 700);
+    setTimeout(() => openView(initialView), 1600);
   }
 })();
