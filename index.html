@@ -661,6 +661,22 @@
   };
 })();
 </script>
+  <script>
+    document.addEventListener('change', event => {
+      if (event.target?.id === 'invoiceClient') {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        window.invoiceClient = event.target.value;
+        window.renderInvoiceDraft();
+      }
+      if (event.target?.id === 'invoiceMonth') {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        window.invoiceMonth = event.target.value;
+        window.renderInvoiceDraft();
+      }
+    }, true);
+  </script>
   <script src="field-documents.js?v=20261110-editable"></script>
 </body>
 </html>
