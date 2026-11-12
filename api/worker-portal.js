@@ -33,7 +33,7 @@ function scoreValue(value) {
 
 async function applications(db, workerId) {
   return db.query(
-    "SELECT a.id,a.job_id,a.job_title,a.status,a.worker_data,a.employer_note,j.data AS job_data,c.data AS company_data FROM allhands_job_applications a JOIN allhands_job_posts j ON a.job_id='db-'||j.id::text JOIN allhands_signup_applications c ON c.id=NULLIF(j.data->>'ownerCompanyId','')::BIGINT WHERE a.worker_data->>'memberId'=$1 AND COALESCE(a.employer_note->'operation'->>'assignmentDate','')<>'' AND c.kind='company' AND c.status='active' AND c.data->>'membershipTier'='operations' ORDER BY a.created_at DESC",
+    "SELECT a.id,a.job_id,a.job_title,a.status,a.worker_data,a.employer_note,j.data AS job_data,c.data AS company_data FROM allhands_job_applications a JOIN allhands_job_posts j ON a.job_id='db-'||j.id::text LEFT JOIN allhands_signup_applications c ON c.id=NULLIF(j.data->>'ownerCompanyId','')::BIGINT AND c.kind='company' AND c.status='active' WHERE a.worker_data->>'memberId'=$1 AND COALESCE(a.employer_note->'operation'->>'assignmentDate','')<>'' AND COALESCE(a.employer_note->'operation'->>'resignationDate','')='' ORDER BY a.created_at DESC",
     [String(workerId)]
   );
 }
