@@ -165,10 +165,12 @@ module.exports = async (req, res) => {
       const old = Array.isArray(previous.workerAttendance) ? previous.workerAttendance : [];
       const openIndex = [...old].reverse().findIndex(row => row?.checkInAt && !row?.checkOutAt);
       const actualOpenIndex = openIndex < 0 ? -1 : old.length - 1 - openIndex;
+      const todayRecord = old.find(row => clean(row?.workDate) === today);
       let workDate = today;
       let record;
       if (event === 'check-in') {
         if (actualOpenIndex >= 0) return res.status(409).json({ error: '이미 출근 처리되어 있습니다. 먼저 퇴근을 기록해 주세요.' });
+        if (todayRecord?.checkOutAt) return res.status(409).json({ error: '오늘 출퇴근 기록이 완료되었습니다. 다음 날 다시 출근할 수 있습니다.' });
         record = { workDate, attendance: '출근', normalHours: 0, overtimeHours: 0, checkInAt: nowIso, checkInLocation: location, reportedAt: nowIso, source: 'attendance-app' };
       } else {
         if (actualOpenIndex < 0) return res.status(409).json({ error: '출근 기록이 없습니다. 출근부터 기록해 주세요.' });

@@ -11,6 +11,6 @@
   "background_color": "#eef3f8",
   "theme_color": "#10285d",
   "lang": "ko",
-  "icons": [{"src":"/attendance-icon.png","sizes":"512x512","type":"image/png","purpose":"any maskable"}]
+  "icons": [{"src":"/attendance-icon.png?v=2","sizes":"512x512","type":"image/png","purpose":"any maskable"}]
 }
 
