@@ -101,12 +101,14 @@
       if (event.target?.id === 'invoiceClient') {
         event.preventDefault();
         event.stopImmediatePropagation();
+        window.invoiceMonth = document.getElementById('invoiceMonth')?.value || new Date().toISOString().slice(0, 7);
         window.invoiceClient = event.target.value;
         window.renderInvoiceDraft();
       }
       if (event.target?.id === 'invoiceMonth') {
         event.preventDefault();
         event.stopImmediatePropagation();
+        window.invoiceClient = document.getElementById('invoiceClient')?.value || '';
         window.invoiceMonth = event.target.value;
         window.renderInvoiceDraft();
       }
