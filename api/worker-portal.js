@@ -224,11 +224,14 @@ module.exports = async (req, res) => {
       }
       if (accuracy !== null && accuracy > 250) return res.status(400).json({ error: 'GPS 오차가 큽니다. 실외 또는 창가에서 다시 시도해 주세요.' });
       const workerAttendance = Array.isArray(previous.workerAttendance) ? [...previous.workerAttendance] : [];
-      const needsCorrection = workerAttendance.slice(-10).some(row => {
-        const status = row?.checkOutLocation?.status || row?.checkInLocation?.status || '';
-        return status.includes('확인 필요') || status.includes('미등록') || status.includes('최초');
-      }) || previous.operation?.worksiteGeo?.needsConfirmation;
-      if (!needsCorrection) return res.status(409).json({ error: '현재는 위치 보정이 필요한 기록이 없습니다.' });
+      const recentStatuses = workerAttendance
+        .slice()
+        .sort((a, b) => String(b?.workDate || '').localeCompare(String(a?.workDate || '')))
+        .map(row => row?.checkOutLocation?.status || row?.checkInLocation?.status || '');
+      const needsCorrection = recentStatuses.length >= 2 && recentStatuses.slice(0, 2).every(status =>
+        status.includes('담당자 확인') || status.includes('확인 필요') || status.includes('미등록') || status.includes('최초')
+      );
+      if (!needsCorrection) return res.status(409).json({ error: '담당자 확인 필요 기록이 2회 연속 발생한 경우에만 위치를 보정할 수 있습니다.' });
       const nowIso = new Date().toISOString();
       const operation = { ...(previous.operation || {}) };
       const radius = Math.max(50, Math.min(2000, finiteNumber(operation.worksiteRadius ?? operation.worksiteGeo?.radius) || 200));
