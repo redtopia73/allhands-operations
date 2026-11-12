@@ -1,7 +1,13 @@
 (() => {
   const openView = view => {
     if (!view || typeof window.setView !== 'function') return;
-    window.setView(view);
+    try {
+      window.setView(view);
+      delete document.documentElement.dataset.navigationError;
+    } catch (error) {
+      document.documentElement.dataset.navigationError = error?.message || '화면 전환 오류';
+      console.error('Operations navigation failed:', error);
+    }
   };
 
   document.addEventListener('click', event => {
