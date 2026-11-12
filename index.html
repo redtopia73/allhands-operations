@@ -506,7 +506,8 @@
       const button=event.target.closest('button');
       if(!button)return;
       let handled=true;
-      if(button.id==='clientMasterSave')window.saveClientMaster();
+      if(button.closest('#sideNav')&&button.dataset.view){window.setView(button.dataset.view);if(window.history?.replaceState)window.history.replaceState(null,'',`#${button.dataset.view}`)}
+      else if(button.id==='clientMasterSave')window.saveClientMaster();
       else if(button.closest('#manualWorkerPanel')&&button.classList.contains('primary'))window.saveManualWorker();
       else if(button.classList.contains('attendance-person')){const id=button.getAttribute('onclick')?.match(/openAttendance\(([-\d]+)\)/)?.[1];if(id)window.openAttendance(id);else handled=false}
       else if(button.closest('.attendance-actions')){const label=button.textContent.trim();if(label==='저장')window.saveAttendance(false);else if(label==='마감')window.saveAttendance(true);else if(label==='마감 취소')window.cancelAttendanceClose();else handled=false}
