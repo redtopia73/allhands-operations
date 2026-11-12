@@ -27,53 +27,15 @@ module.exports = async (req, res) => {
       const payload = Buffer.from(JSON.stringify({ role:'worker', id:workerId, expires:Date.now()+2592000000 })).toString('base64url');
       const workerCookie = `allhands_worker=${payload}.${sign(payload, secret)}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=2592000`;
       res.setHeader('Set-Cookie', [workerCookie,'allhands_admin=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0','allhands_company=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0']);
-      res.setHeader('Location', '/attendance.html?install=1');
+      const kakaoBrowser = /KAKAOTALK/i.test(String(req.headers['user-agent'] || ''));
+      res.setHeader('Location', kakaoBrowser
+        ? `/attendance.html?install=1&handoff=${encodeURIComponent(String(req.query.invite))}`
+        : '/attendance.html?install=1');
       return res.status(302).end();
     } catch {
       return res.status(401).send('출퇴근 앱 링크가 만료되었거나 새 링크로 교체되었습니다. 업체 담당자에게 새 링크를 요청해 주세요.');
     }
   }
-  if (req.method === 'GET' && req.query?.ticket) {
-    try {
-      const secret = process.env.ADMIN_SESSION_SECRET;
-      if (!secret) throw new Error('login-not-configured');
-      const tokenHash = crypto.createHash('sha256').update(String(req.query.ticket)).digest('hex');
-      const db = await ensureTables();
-      const tickets = await db.query(
-        "SELECT id,data FROM allhands_operation_documents WHERE document_type='operations-sso-ticket' AND data->>'tokenHash'=$1 AND COALESCE(data->>'usedAt','')='' AND (data->>'expiresAt')::timestamptz>NOW() ORDER BY created_at DESC LIMIT 1",
-        [tokenHash]
-      );
-      const ticket = tickets[0];
-      const role = ticket?.data?.role;
-      const companyId = Number(ticket?.data?.companyId);
-      if (!ticket || !['company','admin'].includes(role)) throw new Error('invalid-ticket');
-      if (role === 'company') {
-        if (!Number.isSafeInteger(companyId)) throw new Error('invalid-ticket');
-        const memberships = await db.query("SELECT data FROM allhands_signup_applications WHERE id=$1 AND kind='company' AND status='active' LIMIT 1", [companyId]);
-        if (memberships[0]?.data?.membershipTier !== 'operations') return res.status(403).send('운영관리회원 권한이 필요합니다. 올핸잡 관리자에게 운영관리회원 승인을 요청해 주세요.');
-      }
-      const usedAt = new Date().toISOString();
-      await db.query(
-        "UPDATE allhands_operation_documents SET data=jsonb_set(data,'{usedAt}',to_jsonb($1::text),true),updated_at=NOW() WHERE id=$2 AND COALESCE(data->>'usedAt','')=''",
-        [usedAt, ticket.id]
-      );
-      const targetPayload = Buffer.from(JSON.stringify(role === 'admin' ? { role:'admin', expires:Date.now()+28800000 } : { role:'company', id:companyId, expires:Date.now()+86400000 })).toString('base64url');
-      const cookieName = role === 'admin' ? 'allhands_admin' : 'allhands_company';
-      const maxAge = role === 'admin' ? 28800 : 86400;
-      const sessionCookie = `${cookieName}=${targetPayload}.${sign(targetPayload, secret)}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=${maxAge}`;
-      const clearCookies = role === 'admin'
-        ? ['allhands_company=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0','allhands_worker=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0']
-        : ['allhands_admin=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0','allhands_worker=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0'];
-      res.setHeader('Cache-Control', 'no-store, max-age=0');
-      res.setHeader('Set-Cookie', [sessionCookie, ...clearCookies]);
-      res.setHeader('Location', '/');
-      return res.status(302).end();
-    } catch (error) {
-      console.error('Operations ticket login failed', error?.message || error);
-      return res.status(401).send('운영관리 자동 로그인 링크가 만료되었거나 올바르지 않습니다. 올핸잡에서 다시 시도해 주세요.');
-    }
-  }
-
   if (req.method === 'GET' && req.query?.sso) {
     try {
       const token = String(req.query.sso), [payload, signature] = token.split('.');
