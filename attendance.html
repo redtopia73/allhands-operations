@@ -32,13 +32,9 @@
     <header class="top"><div class="brand"><span class="brand-mark">J</span><span>all hands <b>JOB</b></span></div><a class="portal" href="/worker.html">내 정보</a></header>
     <section class="hero"><small>간편 출퇴근</small><h1>출근·퇴근을 기록하세요</h1><p>아래 버튼을 누르면 현재 시간과 위치가 근태에 바로 기록됩니다.</p><div class="clock" id="clock">--:--:--</div><div class="date" id="today">날짜 확인 중</div></section>
     <div class="content">
+      <select id="assignment" hidden aria-hidden="true"></select>
       <section class="card">
-        <h2><span class="step">1</span>오늘 근무할 현장</h2>
-        <p class="muted">배치된 현장이 여러 곳이면 오늘 근무할 현장을 선택해 주세요.</p>
-        <label class="field">근무지<select id="assignment"></select></label>
-      </section>
-      <section class="card">
-        <div class="status"><div><h2><span class="step">2</span>출퇴근 체크</h2><span class="status-pill" id="statusPill">기록 전</span></div><div class="status-time"><span>최근 기록</span><b id="lastTime">-</b></div></div>
+        <div class="status"><div><h2><span class="step">1</span>출퇴근 체크</h2><span class="status-pill" id="statusPill">기록 전</span></div><div class="status-time"><span>최근 기록</span><b id="lastTime">-</b></div></div>
         <div class="actions"><button class="action in" id="checkIn">출근 체크<small>현재 위치와 시간 기록</small></button><button class="action out" id="checkOut">퇴근 체크<small>근무시간 자동 계산</small></button></div>
         <div class="location" id="locationInfo"><i></i><div><strong>위치 확인 대기</strong><br>버튼을 누를 때만 현재 위치를 확인합니다.</div></div>
         <p class="notice" id="message"></p>
@@ -47,7 +43,7 @@
         <p class="install-copy" id="installCopy">처음 한 번만 설치하면 다음부터 휴대폰 홈 화면의 아이콘으로 바로 출퇴근할 수 있습니다.</p>
         <button class="install" id="install">휴대폰 홈 화면에 설치하기</button>
       </section>
-      <section class="card"><h2><span class="step">3</span>최근 출퇴근 기록</h2><div class="history" id="history"><div class="empty">기록을 불러오는 중입니다.</div></div></section>
+      <section class="card"><h2><span class="step">2</span>최근 출퇴근 기록</h2><div class="history" id="history"><div class="empty">기록을 불러오는 중입니다.</div></div></section>
       <p class="privacy">위치정보는 출근·퇴근 버튼을 누른 시점에만 근태 확인 목적으로 저장되며, 지속적으로 추적하지 않습니다. 현장 위치가 등록되지 않았거나 반경 밖에서 기록하면 담당자 확인 대상으로 표시됩니다.</p>
     </div>
   </main>
