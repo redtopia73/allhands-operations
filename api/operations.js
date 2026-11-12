@@ -10,6 +10,12 @@ function operationPhotoUrl(pathname, companyId, admin) {
   return `https://allhands-job.vercel.app/api/file-view?pathname=${encodeURIComponent(pathname)}&operationsToken=${payload}.${signature}`;
 }
 
+function updatedOperation(previous, input) {
+  return {
+    ...(previous || {}), attendance: String(input.attendance || ''), workDays: String(input.workDays || ''), workHours: String(input.workHours || ''), dailyRate: String(input.dailyRate || ''), grossPay: String(input.grossPay || ''), netPay: String(input.netPay || ''), payDate: String(input.payDate || ''), assignmentDate: String(input.assignmentDate || previous?.assignmentDate || ''), resignationDate: String(input.resignationDate || previous?.resignationDate || ''), bankName: String(input.bankName || previous?.bankName || ''), bankCode: String(input.bankCode || previous?.bankCode || ''), accountNumber: String(input.accountNumber || previous?.accountNumber || ''), accountHolder: String(input.accountHolder || previous?.accountHolder || ''), assignedJobId: String(input.assignedJobId || previous?.assignedJobId || ''), hourlyRate: String(input.hourlyRate || previous?.hourlyRate || '10320'), workType: String(input.workType || previous?.workType || '주간'), socialInsurance: input.socialInsurance && typeof input.socialInsurance === 'object' ? input.socialInsurance : (previous?.socialInsurance || {}), attendanceCalendar: input.attendanceCalendar && typeof input.attendanceCalendar === 'object' ? input.attendanceCalendar : (previous?.attendanceCalendar || {}), payrollConfirmed: typeof input.payrollConfirmed === 'boolean' ? input.payrollConfirmed : Boolean(previous?.payrollConfirmed), payrollConfirmedMonth: String(input.payrollConfirmedMonth || previous?.payrollConfirmedMonth || '').slice(0, 7), payrollConfirmedAt: String(input.payrollConfirmedAt || previous?.payrollConfirmedAt || '').slice(0, 40), payrollSummary: input.payrollSummary && typeof input.payrollSummary === 'object' ? input.payrollSummary : (previous?.payrollSummary || {}), updatedAt: new Date().toISOString()
+  };
+}
+
 module.exports = async (req, res) => {
   try {
     const admin = valid(req, 'allhands_admin');
@@ -25,6 +31,15 @@ module.exports = async (req, res) => {
 
     if (req.method === 'POST') {
       const input = body(req);
+      if (input.action === 'manual-worker-save') {
+        const document = input.document && typeof input.document === 'object' ? input.document : {};
+        const name = String(document.name || '').trim(), clientName = String(document.clientName || '').trim();
+        if (!name || !clientName) return res.status(400).json({ error: '성명과 고객사명을 입력해 주세요.' });
+        const workerData = { name, phone: String(document.phone || ''), address: String(document.address || ''), gender: String(document.gender || ''), birth: String(document.birth || ''), source: 'company-manual' };
+        const workerOperation = updatedOperation({}, { assignmentDate: document.assignmentDate || new Date().toISOString().slice(0, 10), hourlyRate: document.hourlyRate || '10320', workType: document.workType || '주간', assignedJobId: `manual-client:${clientName}`, socialInsurance: document.socialInsurance || {} });
+        const rows = await db.query('INSERT INTO allhands_operation_workers (owner_company_id,client_name,job_title,data,operation) VALUES ($1,$2,$3,$4::jsonb,$5::jsonb) RETURNING id,updated_at', [ownerCompanyId, clientName, String(document.jobTitle || ''), JSON.stringify(workerData), JSON.stringify(workerOperation)]);
+        return res.status(201).json({ ok: true, id: -Number(rows[0].id), updatedAt: rows[0].updated_at });
+      }
       if (input.action === 'worker-attendance-invite') {
         const applicationId = Number(input.applicationId);
         if (!Number.isSafeInteger(applicationId)) return res.status(400).json({ error: '근로자 정보를 확인해 주세요.' });
@@ -432,6 +447,13 @@ module.exports = async (req, res) => {
 
       const appId = Number(input.applicationId);
       if (!appId) return res.status(400).json({ error: '대상 인력을 확인해 주세요.' });
+      if (appId < 0) {
+        const workerId = Math.abs(appId), workers = await db.query(admin ? 'SELECT operation FROM allhands_operation_workers WHERE id=$1' : 'SELECT operation FROM allhands_operation_workers WHERE id=$1 AND owner_company_id=$2', admin ? [workerId] : [workerId, ownerCompanyId]);
+        if (!workers[0]) return res.status(404).json({ error: '권한이 없거나 대상 인력이 없습니다.' });
+        const operation = updatedOperation(workers[0].operation || {}, input);
+        await db.query('UPDATE allhands_operation_workers SET operation=$1::jsonb,updated_at=NOW() WHERE id=$2', [JSON.stringify(operation), workerId]);
+        return res.status(200).json({ ok: true });
+      }
       const rows = await db.query(
         admin
           ? 'SELECT employer_note FROM allhands_job_applications WHERE id=$1'
@@ -483,6 +505,8 @@ module.exports = async (req, res) => {
           : "SELECT a.id,a.job_id,a.job_title,a.worker_data,a.status,a.employer_note,a.created_at FROM allhands_job_applications a JOIN allhands_job_posts j ON a.job_id='db-'||j.id::text WHERE COALESCE(j.data->>'listingType','hiring')<>'b2b' AND j.data->>'ownerCompanyId'=$1 ORDER BY a.created_at DESC LIMIT 300",
         admin ? [] : [ownerCompanyId]
       );
+      const manualRows = await db.query(admin ? 'SELECT id,client_name,job_title,data,operation FROM allhands_operation_workers ORDER BY updated_at DESC LIMIT 300' : 'SELECT id,client_name,job_title,data,operation FROM allhands_operation_workers WHERE owner_company_id=$1 ORDER BY updated_at DESC LIMIT 300', admin ? [] : [ownerCompanyId]);
+      manualRows.forEach(item => people.push({ id: -Number(item.id), job_id: `manual-client:${item.client_name}`, job_title: item.job_title || '고객사 직원', worker_data: item.data || {}, status: 'accepted', employer_note: { operation: item.operation || {} }, manualClientName: item.client_name, manualWorker: true }));
       const memberIds = people.map(item => Number(item.worker_data?.memberId)).filter(Number.isSafeInteger);
       if (memberIds.length) {
         const workers = await db.query("SELECT id,data FROM allhands_signup_applications WHERE kind='worker' AND id=ANY($1::bigint[])", [memberIds]);
