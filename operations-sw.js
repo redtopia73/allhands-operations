@@ -1,4 +1,4 @@
-const CACHE_NAME = 'allhands-operations-v3';
+const CACHE_NAME = 'allhands-operations-v4';
 const APP_SHELL = [
   '/',
   '/index.html',
