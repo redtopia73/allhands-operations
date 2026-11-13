@@ -16,6 +16,14 @@ function updatedOperation(previous, input) {
   };
 }
 
+const operationAccountRoles = {
+  manager: ['all'],
+  field: ['applicants','people','clients','personnel','attendance','contracts','certificates','notices'],
+  payroll: ['attendance','payroll','invoice','ledger','transfer'],
+  viewer: ['view']
+};
+const accountText = (value, length=160) => String(value || '').trim().slice(0, length);
+
 module.exports = async (req, res) => {
   try {
     const admin = valid(req, 'allhands_admin');
@@ -31,6 +39,44 @@ module.exports = async (req, res) => {
 
     if (req.method === 'POST') {
       const input = body(req);
+      if (company?.accountId) {
+        const accountRole = String(company.accountRole || 'field');
+        const action = String(input.action || 'operation-update');
+        const payrollActions = new Set(['payroll-calculation-save','payroll-ledger-save','payslip-delivery-save','invoice-save','external-approval-create']);
+        if (accountRole === 'viewer') return res.status(403).json({ error:'조회전용 계정은 내용을 변경할 수 없습니다.' });
+        if (accountRole === 'field' && payrollActions.has(action)) return res.status(403).json({ error:'급여·청구 업무 권한이 필요한 작업입니다.' });
+        if (accountRole === 'payroll' && action !== 'operation-update' && !payrollActions.has(action)) return res.status(403).json({ error:'현장관리 권한이 필요한 작업입니다.' });
+      }
+      if (['operation-user-save','operation-user-status','operation-user-password'].includes(input.action)) {
+        if (!company || company.accountId) return res.status(403).json({ error: '기업 대표계정에서만 담당자 계정을 관리할 수 있습니다.' });
+        if (input.action === 'operation-user-save') {
+          const name = accountText(input.name,80), email = accountText(input.email,200).toLowerCase(), password = String(input.password || ''), accountRole = operationAccountRoles[input.accountRole] ? input.accountRole : 'field';
+          if (!name || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return res.status(400).json({ error: '담당자 이름과 올바른 이메일을 입력해 주세요.' });
+          if (password.length < 8) return res.status(400).json({ error: '임시 비밀번호는 8자 이상으로 입력해 주세요.' });
+          const passwordHash = crypto.createHash('sha256').update(password).digest('hex');
+          try {
+            const rows = await db.query('INSERT INTO allhands_operation_users (owner_company_id,name,email,password_hash,account_role,permissions) VALUES ($1,$2,$3,$4,$5,$6::jsonb) RETURNING id', [Number(company.id),name,email,passwordHash,accountRole,JSON.stringify(operationAccountRoles[accountRole])]);
+            return res.status(201).json({ ok:true,id:rows[0].id });
+          } catch (error) {
+            if (String(error?.message||'').toLowerCase().includes('unique')) return res.status(409).json({ error:'이미 등록된 담당자 이메일입니다.' });
+            throw error;
+          }
+        }
+        const accountId = Number(input.accountId);
+        if (!Number.isSafeInteger(accountId)) return res.status(400).json({ error:'담당자 계정을 확인해 주세요.' });
+        if (input.action === 'operation-user-status') {
+          const status = input.status === 'active' ? 'active' : 'suspended';
+          const rows = await db.query('UPDATE allhands_operation_users SET status=$1,updated_at=NOW() WHERE id=$2 AND owner_company_id=$3 RETURNING id', [status,accountId,Number(company.id)]);
+          if (!rows[0]) return res.status(404).json({ error:'담당자 계정을 찾지 못했습니다.' });
+          return res.status(200).json({ ok:true });
+        }
+        const password = String(input.password || '');
+        if (password.length < 8) return res.status(400).json({ error:'새 임시 비밀번호는 8자 이상으로 입력해 주세요.' });
+        const passwordHash = crypto.createHash('sha256').update(password).digest('hex');
+        const rows = await db.query('UPDATE allhands_operation_users SET password_hash=$1,updated_at=NOW() WHERE id=$2 AND owner_company_id=$3 RETURNING id', [passwordHash,accountId,Number(company.id)]);
+        if (!rows[0]) return res.status(404).json({ error:'담당자 계정을 찾지 못했습니다.' });
+        return res.status(200).json({ ok:true });
+      }
       if (input.action === 'manual-worker-save') {
         const document = input.document && typeof input.document === 'object' ? input.document : {};
         const name = String(document.name || '').trim(), clientName = String(document.clientName || '').trim();
@@ -585,7 +631,15 @@ module.exports = async (req, res) => {
         const companyData = companyRows[0]?.data || {};
         companyName = String(companyData.companyName || companyData.company || companyData.name || '').trim();
       }
-      return res.status(200).json({ jobs, people, documents, messages, externalApprovals, role: admin ? 'admin' : 'company', companyName });
+      const operationUsers = company && !company.accountId
+        ? await db.query('SELECT id,name,email,account_role,permissions,status,last_login_at,created_at FROM allhands_operation_users WHERE owner_company_id=$1 ORDER BY created_at ASC', [Number(company.id)])
+        : [];
+      const currentUser = admin
+        ? { type:'admin', name:'관리자', accountRole:'manager', permissions:['all'], canManageAccounts:false }
+        : company.accountId
+          ? { type:'team', id:company.accountId, name:company.accountName||'담당자', accountRole:company.accountRole||'field', permissions:Array.isArray(company.permissions)?company.permissions:[], canManageAccounts:false }
+          : { type:'owner', name:companyName||'기업 관리자', accountRole:'manager', permissions:['all'], canManageAccounts:true };
+      return res.status(200).json({ jobs, people, documents, messages, externalApprovals, operationUsers, currentUser, role: admin ? 'admin' : 'company', companyName });
     }
 
     return res.status(405).json({ error: '허용되지 않은 요청입니다.' });
