@@ -722,10 +722,10 @@
     const ledgerPayrollRows = documents => {
       const calculated = latestDocuments(documents, 'payroll-calculation', item => item.month).flatMap(item => (item.rows||[]).map(row => ({...row,month:item.month,status:'계산 저장'})));
       const saved = new Map(calculated.map(item => [`${item.month}|${item.applicationId}`,item]));
-      latestDocuments(documents, 'payroll-ledger', item => `${item.month}|${item.applicationId}`).forEach(item=>{const key=`${item.month}|${item.applicationId}`;saved.set(key,{...(saved.get(key)||{}),...item,status:'확정'})});
+      latestDocuments(documents, 'payroll-ledger', item => `${item.month}|${item.applicationId}`).forEach(item=>{const key=`${item.month}|${item.applicationId}`,calculatedRow=saved.get(key)||{};saved.set(key,{...item,...calculatedRow,status:'확정',confirmedAt:item.confirmedAt||calculatedRow.confirmedAt||''})});
       data.filter(person => operation(person).payrollConfirmed && operation(person).payrollConfirmedMonth).forEach(person => {
         const snapshot = currentPayrollSnapshot(person), key = `${snapshot.month}|${snapshot.applicationId}`;
-        saved.set(key,{...(saved.get(key)||{}),...snapshot});
+        const calculatedRow=saved.get(key)||{};saved.set(key,{...snapshot,...calculatedRow,status:'확정',confirmedAt:snapshot.confirmedAt||calculatedRow.confirmedAt||'',grossPay:snapshot.grossPay||calculatedRow.grossPay||0,netPay:snapshot.netPay||calculatedRow.netPay||0,deductions:snapshot.deductions||calculatedRow.deductions||0});
       });
       return [...saved.values()];
     };
