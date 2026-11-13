@@ -47,7 +47,7 @@ module.exports = async (req, res) => {
         if (accountRole === 'field' && payrollActions.has(action)) return res.status(403).json({ error:'급여·청구 업무 권한이 필요한 작업입니다.' });
         if (accountRole === 'payroll' && action !== 'operation-update' && !payrollActions.has(action)) return res.status(403).json({ error:'현장관리 권한이 필요한 작업입니다.' });
       }
-      if (['operation-user-save','operation-user-status','operation-user-password'].includes(input.action)) {
+      if (['operation-user-save','operation-user-status','operation-user-password','operation-user-delete'].includes(input.action)) {
         if (!company || company.accountId) return res.status(403).json({ error: '기업 대표계정에서만 담당자 계정을 관리할 수 있습니다.' });
         if (input.action === 'operation-user-save') {
           const name = accountText(input.name,80), email = accountText(input.email,200).toLowerCase(), password = String(input.password || ''), accountRole = operationAccountRoles[input.accountRole] ? input.accountRole : 'field';
@@ -64,6 +64,11 @@ module.exports = async (req, res) => {
         }
         const accountId = Number(input.accountId);
         if (!Number.isSafeInteger(accountId)) return res.status(400).json({ error:'담당자 계정을 확인해 주세요.' });
+        if (input.action === 'operation-user-delete') {
+          const rows = await db.query('DELETE FROM allhands_operation_users WHERE id=$1 AND owner_company_id=$2 RETURNING id', [accountId,Number(company.id)]);
+          if (!rows[0]) return res.status(404).json({ error:'담당자 계정을 찾지 못했습니다.' });
+          return res.status(200).json({ ok:true });
+        }
         if (input.action === 'operation-user-status') {
           const status = input.status === 'active' ? 'active' : 'suspended';
           const rows = await db.query('UPDATE allhands_operation_users SET status=$1,updated_at=NOW() WHERE id=$2 AND owner_company_id=$3 RETURNING id', [status,accountId,Number(company.id)]);
