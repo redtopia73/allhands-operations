@@ -219,14 +219,14 @@ module.exports = async (req, res) => {
         await db.query('UPDATE allhands_job_applications SET status=$1 WHERE id=$2', [nextStatus, appId]);
         return res.status(200).json({ ok: true, message: `${nextStatus}으로 처리했습니다.` });
       }
-      if (input.action === 'add-interview-candidate' || input.action === 'force-add-applicant') {
+      if (input.action === 'add-interview-candidate' || input.action === 'force-add-applicant' || input.action === 'urgent-vacancy-offer') {
         const sourceId = Number(input.sourceApplicationId);
         const targetJobId = String(input.targetJobId || '').trim();
         if (!sourceId || !/^db-\d+$/.test(targetJobId)) return res.status(400).json({ error: '지원자와 대상 공고를 확인해 주세요.' });
         const sources = await db.query(
           admin
-            ? 'SELECT id,worker_data FROM allhands_job_applications WHERE id=$1'
-            : "SELECT a.id,a.worker_data FROM allhands_job_applications a JOIN allhands_job_posts j ON a.job_id='db-'||j.id::text WHERE a.id=$1 AND j.data->>'ownerCompanyId'=$2",
+            ? 'SELECT id,job_id,worker_data,employer_note FROM allhands_job_applications WHERE id=$1'
+            : "SELECT a.id,a.job_id,a.worker_data,a.employer_note FROM allhands_job_applications a JOIN allhands_job_posts j ON a.job_id='db-'||j.id::text WHERE a.id=$1 AND j.data->>'ownerCompanyId'=$2",
           admin ? [sourceId] : [sourceId, ownerCompanyId]
         );
         const source = sources[0];
@@ -240,11 +240,55 @@ module.exports = async (req, res) => {
         const target = targets[0];
         if (!source || !target) return res.status(404).json({ error: '권한이 없거나 대상 공고를 찾지 못했습니다.' });
         const memberId = String(source.worker_data?.memberId || '');
+        let existingApplication = null;
         if (memberId) {
-          const existing = await db.query("SELECT id FROM allhands_job_applications WHERE job_id=$1 AND worker_data->>'memberId'=$2 LIMIT 1", [targetJobId, memberId]);
-          if (existing[0]) return res.status(409).json({ error: '이미 이 공고의 면접 리스트에 등록된 지원자입니다.' });
+          const existing = await db.query("SELECT id,employer_note FROM allhands_job_applications WHERE job_id=$1 AND worker_data->>'memberId'=$2 LIMIT 1", [targetJobId, memberId]);
+          existingApplication = existing[0] || null;
+          if (existingApplication && input.action !== 'urgent-vacancy-offer') return res.status(409).json({ error: '이미 이 공고의 면접 리스트에 등록된 지원자입니다.' });
+        } else if (String(source.job_id || '') === targetJobId) {
+          existingApplication = source;
         }
         const jobTitle = String(target.data?.title || target.data?.jobTitle || '채용 공고');
+        if (input.action === 'urgent-vacancy-offer') {
+          const now = new Date().toISOString();
+          const previous = existingApplication?.employer_note || source.employer_note || {};
+          const history = Array.isArray(previous.workflowHistory) ? previous.workflowHistory : [];
+          const note = {
+            ...previous,
+            urgentOffer: true,
+            urgentOfferAt: now,
+            urgentOfferJobId: targetJobId,
+            urgentOfferStatus: 'sent',
+            urgentOfferFromApplicationId: sourceId,
+            workflowStage: 'resume_request',
+            resumeRequested: true,
+            workflowHistory: [...history, { step: 'urgent_offer', label: '긴급제안', sentAt: now }]
+          };
+          let applicationId = existingApplication?.id;
+          if (applicationId) {
+            await db.query('UPDATE allhands_job_applications SET status=$1,employer_note=$2::jsonb WHERE id=$3', ['긴급제안 · 회신 대기', JSON.stringify(note), applicationId]);
+          } else {
+            const created = await db.query('INSERT INTO allhands_job_applications (job_id,job_title,worker_data,status,employer_note) VALUES ($1,$2,$3::jsonb,$4,$5::jsonb) RETURNING id', [targetJobId, jobTitle, JSON.stringify(source.worker_data || {}), '긴급제안 · 회신 대기', JSON.stringify(note)]);
+            applicationId = created[0].id;
+          }
+
+          const workerId = Number(source.worker_data?.memberId);
+          if (Number.isSafeInteger(workerId)) {
+            const workers = await db.query("SELECT data FROM allhands_signup_applications WHERE id=$1 AND kind='worker' AND status='active' LIMIT 1", [workerId]);
+            if (workers[0]) {
+              let senderName = 'all hands JOB 관리자';
+              if (company) {
+                const sender = await db.query('SELECT data FROM allhands_signup_applications WHERE id=$1 LIMIT 1', [Number(company.id)]);
+                senderName = String(sender[0]?.data?.companyName || sender[0]?.data?.company || '기업 회원');
+              }
+              const workplace = String(target.data?.workplace || target.data?.location || target.data?.region || '상세 내용 확인');
+              const conditions = [target.data?.workTime || target.data?.hours, target.data?.salary || target.data?.wage || target.data?.pay].filter(Boolean).join(' · ') || '공고 근무조건 확인';
+              const body = `[긴급제안]\n\n공고: ${jobTitle}\n근무지: ${workplace}\n근무조건: ${conditions}\n\n현재 결원 충원을 위해 드리는 긴급 근무 제안입니다. 근무 가능 여부를 빠르게 회신해 주세요. 참여 의사가 있으면 기업의 면접 안내가 이어집니다.`;
+              await db.query('INSERT INTO allhands_messages (sender_kind,sender_id,sender_name,recipient_kind,recipient_id,recipient_name,subject,body,attachments) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9::jsonb)', [admin ? 'admin' : 'company', admin ? null : Number(company.id), senderName, 'worker', workerId, String(workers[0].data?.name || source.worker_data?.name || '구직자'), `[긴급제안] ${jobTitle}`, body, '[]']);
+            }
+          }
+          return res.status(existingApplication ? 200 : 201).json({ ok: true, id: applicationId, message: '후보자에게 긴급제안 안내를 전달했습니다.' });
+        }
         const forced = input.action === 'force-add-applicant';
         const note = forced
           ? { forcedAddedFromApplicationId: sourceId, forcedAddedAt: new Date().toISOString(), workflowStage: 'application', workflowHistory: [{ step: 'application', label: '관리자 강제 추가', sentAt: new Date().toISOString() }] }
@@ -549,5 +593,6 @@ module.exports = async (req, res) => {
     return res.status(500).json({ error: errorKind(error) });
   }
 };
+
 
 
