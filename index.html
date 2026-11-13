@@ -3,6 +3,10 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#172852">
+  <meta name="application-name" content="올핸잡 운영관리">
+  <link rel="manifest" href="/operations.webmanifest">
+  <link rel="icon" href="/operations-icon.svg?v=1" type="image/svg+xml">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nanum+Gothic:wght@400;700;800&display=swap">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700;800&family=Poppins:wght@600;700;800&display=swap">
   <title>all hands 운영관리</title>
@@ -997,6 +1001,49 @@
     const alertLoadData=window.loadData;
     window.loadData=async()=>{await alertLoadData();updateAttendanceAlertBadge()};
     updateAttendanceAlertBadge();
+  })();
+  </script>
+  <script>
+  (()=>{
+    const style=document.createElement('style');
+    style.textContent=`
+      .operations-install-button{min-height:34px;padding:8px 12px;border:1px solid #b8c5da;border-radius:9px;background:#fff;color:#172852;font:inherit;font-size:12px;font-weight:900;cursor:pointer;white-space:nowrap}
+      .operations-install-button:hover{border-color:#ff7468;color:#c6463c}.operations-install-button.installed{border-color:#b9dfd5;background:#eaf8f3;color:#167052;cursor:default}
+      .operations-install-layer{position:fixed;z-index:100000;inset:0;display:grid;place-items:center;padding:18px;background:rgba(9,22,52,.58)}
+      .operations-install-card{width:min(520px,100%);padding:25px;border-radius:19px;background:#fff;box-shadow:0 25px 75px rgba(0,0,0,.3)}
+      .operations-install-head{display:flex;align-items:start;justify-content:space-between;gap:16px}.operations-install-head h2{margin:0 0 7px;color:#172852}.operations-install-head p{margin:0;color:#61708a;line-height:1.6}
+      .operations-install-close{border:0;background:transparent;color:#66738a;font-size:28px;line-height:1;cursor:pointer}
+      .operations-install-steps{display:grid;gap:9px;margin-top:19px}.operations-install-step{display:grid;grid-template-columns:30px 1fr;gap:10px;align-items:start;padding:12px;border-radius:11px;background:#f4f7fb}
+      .operations-install-step b:first-child{width:28px;height:28px;display:grid;place-items:center;border-radius:50%;background:#172852;color:#fff}.operations-install-step span{color:#53617a;font-size:13px}
+      .operations-install-note{margin:15px 0 0;padding:12px 14px;border-radius:10px;background:#effaf8;color:#326664;font-size:13px}
+      @media(max-width:680px){.operations-install-button{padding:7px 9px}.operations-install-card{padding:20px}}
+    `;
+    document.head.append(style);
+
+    const installed=()=>window.matchMedia('(display-mode: standalone)').matches||window.navigator.standalone===true;
+    let installPrompt=null;
+    const userArea=document.querySelector('.top .user');
+    const button=document.createElement('button');
+    button.type='button';button.className='operations-install-button';button.textContent=installed()?'설치됨':'PC에 설치';
+    if(installed()){button.classList.add('installed');button.disabled=true}
+    userArea?.insertBefore(button,userArea.firstChild);
+
+    const closeGuide=()=>document.querySelector('.operations-install-layer')?.remove();
+    const showGuide=()=>{
+      closeGuide();const layer=document.createElement('div');layer.className='operations-install-layer';
+      layer.innerHTML=`<section class="operations-install-card" role="dialog" aria-modal="true" aria-labelledby="operationsInstallTitle"><div class="operations-install-head"><div><h2 id="operationsInstallTitle">올핸잡 운영관리 설치</h2><p>Chrome 또는 Edge에서 아래 순서대로 설치하면 바탕화면과 시작 메뉴에서 프로그램처럼 실행할 수 있습니다.</p></div><button class="operations-install-close" type="button" aria-label="닫기">×</button></div><div class="operations-install-steps"><div class="operations-install-step"><b>1</b><div><b>브라우저 메뉴 열기</b><br><span>주소창 오른쪽의 설치 아이콘 또는 우측 상단 점 3개 메뉴를 누릅니다.</span></div></div><div class="operations-install-step"><b>2</b><div><b>앱 설치 선택</b><br><span>‘올핸잡 현장인력 운영관리 설치’를 선택합니다.</span></div></div><div class="operations-install-step"><b>3</b><div><b>바탕화면에서 실행</b><br><span>설치 후 운영관리 아이콘을 눌러 독립된 창으로 실행합니다.</span></div></div></div><p class="operations-install-note">설치형에서도 플랫폼·출퇴근 앱과 동일한 데이터를 사용하며, 프로그램 업데이트는 자동으로 반영됩니다.</p></section>`;
+      document.body.append(layer);layer.querySelector('.operations-install-close').onclick=closeGuide;layer.onclick=event=>{if(event.target===layer)closeGuide()};
+    };
+    button.onclick=async()=>{
+      if(installed())return;
+      if(!installPrompt){showGuide();return}
+      installPrompt.prompt();const choice=await installPrompt.userChoice;
+      if(choice.outcome==='accepted'){button.textContent='설치 중';button.disabled=true}
+      installPrompt=null;
+    };
+    window.addEventListener('beforeinstallprompt',event=>{event.preventDefault();installPrompt=event;button.hidden=false});
+    window.addEventListener('appinstalled',()=>{installPrompt=null;button.textContent='설치됨';button.classList.add('installed');button.disabled=true;closeGuide()});
+    if('serviceWorker' in navigator)window.addEventListener('load',()=>navigator.serviceWorker.register('/operations-sw.js',{scope:'/'}).catch(()=>{}));
   })();
   </script>
   <script src="field-documents.js?v=20261110-editable"></script>
