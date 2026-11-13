@@ -708,14 +708,15 @@
     };
     const currentPayrollSnapshot = person => {
       const op = operation(person), summary = op.payrollSummary || {};
+      const normalHours=Number(summary.normalHours)||0,overtimeHours=Number(summary.overtimeHours)||0,holidayHours=Number(summary.holidayHours)||0,hourlyRate=ledgerNumber(summary.hourlyRate||op.hourlyRate),grossPay=ledgerNumber(summary.grossPay||op.grossPay),netPay=ledgerNumber(summary.netPay||op.netPay),basicPay=ledgerNumber(summary.basicPay)||(hourlyRate*normalHours),overtimePay=ledgerNumber(summary.overtimePay)||(hourlyRate*overtimeHours*1.5),holidayPay=ledgerNumber(summary.holidayPay)||(hourlyRate*holidayHours*1.5);
       return {
         month:op.payrollConfirmedMonth || '', site:personnelWorksite(person), applicationId:String(person.id), workerName:personName(person),
-        normalHours:Number(summary.normalHours)||0, overtimeHours:Number(summary.overtimeHours)||0, holidayHours:Number(summary.holidayHours)||0,
-        hourlyRate:ledgerNumber(summary.hourlyRate || op.hourlyRate), basicPay:ledgerNumber(summary.basicPay), overtimePay:ledgerNumber(summary.overtimePay), holidayPay:ledgerNumber(summary.holidayPay),
-        add1:ledgerNumber(summary.add1), add2:ledgerNumber(summary.add2), tax:ledgerNumber(summary.tax), localTax:ledgerNumber(summary.localTax),
+        normalHours, overtimeHours, holidayHours,
+        hourlyRate, basicPay, overtimePay, holidayPay,
+        add1:ledgerNumber(summary.add1)||Math.max(0,grossPay-basicPay-overtimePay-holidayPay), add2:ledgerNumber(summary.add2), tax:ledgerNumber(summary.tax), localTax:ledgerNumber(summary.localTax),
         pension:ledgerNumber(summary.pension), health:ledgerNumber(summary.health), employment:ledgerNumber(summary.employment), deduct1:ledgerNumber(summary.deduct1), deduct2:ledgerNumber(summary.deduct2),
-        grossPay:ledgerNumber(summary.grossPay || op.grossPay), netPay:ledgerNumber(summary.netPay || op.netPay),
-        deductions:Math.max(0, ledgerNumber(summary.grossPay || op.grossPay)-ledgerNumber(summary.netPay || op.netPay)),
+        grossPay, netPay,
+        deductions:Math.max(0,grossPay-netPay),
         payDate:summary.payDate || op.payDate || '', confirmedAt:op.payrollConfirmedAt || '', status:'확정'
       };
     };
