@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="background" x1="0" y1="0" x2="1" y2="1">
+      <stop stop-color="#172852"/>
+      <stop offset="1" stop-color="#0e777b"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="108" fill="url(#background)"/>
+  <circle cx="402" cy="108" r="84" fill="none" stroke="#ffffff" stroke-opacity=".08" stroke-width="28"/>
+  <path d="M130 94h58v178c0 47-28 76-74 76-17 0-31-3-42-8l15-48c8 3 15 5 23 5 13 0 20-8 20-25V94z" fill="#ff6358"/>
+  <circle cx="159" cy="70" r="29" fill="#ff6358"/>
+  <path d="M229 148a69 69 0 1 1 0 138 69 69 0 0 1 0-138zm0 46a23 23 0 1 0 0 46 23 23 0 0 0 0-46zm81-46a69 69 0 1 1 0 138 69 69 0 0 1 0-138zm0 46a23 23 0 1 0 0 46 23 23 0 0 0 0-46z" fill="#fff"/>
+  <rect x="84" y="364" width="344" height="74" rx="37" fill="#fff" fill-opacity=".12" stroke="#fff" stroke-opacity=".18"/>
+  <text x="256" y="413" text-anchor="middle" fill="#fff" font-family="Arial, 'Malgun Gothic', sans-serif" font-size="35" font-weight="800">운영관리</text>
+</svg>
+
