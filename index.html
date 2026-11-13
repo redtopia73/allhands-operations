@@ -835,6 +835,45 @@
   </script>
   <script>
   (()=>{
+    const listStyle=document.createElement('style');
+    listStyle.textContent=`
+      .client-master-list,.client-job-list{display:grid!important;grid-template-columns:1fr!important;gap:6px!important;margin:10px 0 22px}
+      .client-list-head,.client-master-row,.client-job-row{display:grid;align-items:center;gap:12px;padding:11px 14px;border:1px solid #dce4f0;background:#fff}
+      .client-list-head{grid-template-columns:1.2fr .8fr 1.4fr 100px;border-radius:10px 10px 0 0;background:#edf2f9;color:#56647c;font-size:12px;font-weight:900}
+      .client-master-row{grid-template-columns:1.2fr .8fr 1.4fr 100px;border-radius:8px}.client-master-row strong{font-size:14px}.client-master-row span{color:#596780;overflow-wrap:anywhere}
+      .client-job-head,.client-job-row{grid-template-columns:1.2fr 1fr 1.1fr 100px}.client-job-row{border-radius:8px}.client-job-row strong{font-size:14px}.client-job-row small{color:#66758e}.client-job-row select{margin:0}
+      .personnel-list{gap:6px!important;margin-top:10px!important}.personnel-list-row{padding:0!important;border-radius:9px!important;box-shadow:none!important;overflow:hidden}.personnel-list-row:hover{transform:none!important;box-shadow:0 5px 14px rgba(30,54,100,.07)!important}
+      .personnel-list-row summary{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:12px;padding:11px 14px;cursor:pointer;list-style:none}.personnel-list-row summary::-webkit-details-marker{display:none}.personnel-list-row summary .personnel-head{margin:0}.personnel-list-row summary:after{content:'상세 보기';color:#41577f;font-size:12px;font-weight:900}.personnel-list-row[open] summary:after{content:'접기'}.personnel-record-body{padding:14px;border-top:1px solid #e7ebf2;background:#fbfcfe}
+      .personnel-list-row .personnel-photo{width:42px;height:42px}.personnel-list-row .personnel-head h2{font-size:15px}.personnel-list-row .personnel-head p{font-size:12px}.former-card{padding:11px 14px!important;border-radius:8px!important;box-shadow:none!important}.former-card .personnel-head{margin:0!important}.former-card .personnel-photo{width:40px;height:40px}
+      @media(max-width:760px){.client-list-head{display:none}.client-master-row,.client-job-row{grid-template-columns:1fr}.client-master-row span:before,.client-job-row small:before{font-weight:900;color:#35435e}.client-master-row .client-contact:before{content:'담당자 · '}.client-master-row .client-email:before{content:'이메일 · '}.client-job-row .client-site:before{content:'현장 · '}.client-master-row button,.client-job-row button{width:100%}}
+    `;
+    document.head.append(listStyle);
+
+    window.renderClientManagement=()=>{
+      const main=document.getElementById('app'),heading=main?.querySelector('.heading');if(!main||!heading)return;
+      heading.querySelector('h1').textContent='고객사 관리';heading.querySelector('p').textContent='고객사 담당자 정보를 저장하고 공고에 연결하면 청구서 검토 요청에 자동으로 반영됩니다.';
+      document.querySelectorAll('#sideNav [data-view]').forEach(button=>button.classList.toggle('active',button.dataset.view==='clients'));
+      Array.from(main.children).forEach(section=>{if(section!==heading)section.remove()});
+      const clients=window.clientMasters||[],jobs=window.operationJobs||[],options=clients.map(client=>`<option value="${esc(client.clientId)}">${esc(client.name)} · ${esc(client.contact)}</option>`).join('');
+      const clientRows=clients.map(client=>`<div class="client-master-row"><strong>${esc(client.name)}</strong><span class="client-contact">${esc(client.contact)}</span><span class="client-email">${esc(client.email)}</span><button class="secondary" onclick="editClientMaster('${esc(client.clientId)}')">정보 수정</button></div>`).join('')||'<div class="empty">등록된 고객사가 없습니다. 위에서 고객사를 먼저 등록해 주세요.</div>';
+      const jobRows=jobs.map(job=>{const detail=jobData(job),jobId='db-'+job.id,linkedName=window.jobClients?.[jobId]||'',linkedId=window.jobClientIds?.[jobId]||clients.find(client=>client.name===linkedName)?.clientId||'';return `<div class="client-job-row"><strong>${esc(detail.title||'공고명 미입력')}</strong><small class="client-site">${esc(detail.workplace||detail.location||detail.region||'현장 정보 미입력')}</small><select id="client-${job.id}" aria-label="${esc(detail.title||'공고')} 고객사 선택"><option value="">고객사를 선택하세요</option>${options.replace(`value="${esc(linkedId)}"`,`value="${esc(linkedId)}" selected`)}</select><button class="primary" onclick="saveJobClient('${jobId}',document.getElementById('client-${job.id}').value)">연결 저장</button></div>`}).join('')||'<div class="empty">연결할 공고가 없습니다.</div>';
+      main.insertAdjacentHTML('beforeend',`<section class="panel client-register"><h2>고객사 등록</h2><p class="muted">청구서 검토를 받을 담당자 정보를 등록합니다.</p><div class="client-register-grid"><label>고객사명<input id="clientMasterName" placeholder="예: 주식회사 고객사"></label><label>담당자<input id="clientMasterContact" placeholder="예: 홍길동"></label><label>담당자 이메일<input id="clientMasterEmail" type="email" placeholder="example@company.com"></label><button id="clientMasterSave" class="primary" onclick="saveClientMaster()">고객사 저장</button></div></section><section><h2>저장된 고객사</h2><div class="client-master-list"><div class="client-list-head"><span>고객사명</span><span>담당자</span><span>이메일</span><span>관리</span></div>${clientRows}</div></section><section><h2>공고별 고객사 지정</h2><p class="muted">공고가 많아도 한 화면에서 빠르게 고객사를 지정할 수 있습니다.</p><div class="client-job-list"><div class="client-list-head client-job-head"><span>공고명</span><span>현장</span><span>고객사</span><span>저장</span></div>${jobRows}</div></section>`);
+    };
+
+    const cardPersonnelRenderer=window.renderPersonnelInfo;
+    window.renderPersonnelInfo=()=>{
+      cardPersonnelRenderer();
+      document.querySelectorAll('.personnel-list .personnel-card:not(.former-card)').forEach(card=>{
+        if(card.tagName==='DETAILS')return;
+        const details=document.createElement('details');details.className=card.className+' personnel-list-row';
+        const summary=document.createElement('summary'),head=card.querySelector('.personnel-head'),body=document.createElement('div');body.className='personnel-record-body';
+        if(head)summary.append(head);Array.from(card.childNodes).forEach(node=>body.append(node));details.append(summary,body);card.replaceWith(details);
+      });
+    };
+  })();
+  </script>
+  <script>
+  (()=>{
     const style=document.createElement('style');
     style.textContent=`
       .account-register-grid{display:grid;grid-template-columns:1fr 1.25fr 1fr 1fr auto;gap:10px;align-items:end;margin-top:15px}
