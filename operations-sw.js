@@ -1,10 +1,10 @@
-const CACHE_NAME = 'allhands-operations-v1';
+const CACHE_NAME = 'allhands-operations-v2';
 const APP_SHELL = [
   '/',
   '/index.html',
   '/guide.html',
   '/operations.webmanifest',
-  '/operations-icon.svg?v=1'
+  '/operations-icon.png?v=3'
 ];
 
 self.addEventListener('install', event => {
@@ -40,4 +40,3 @@ self.addEventListener('fetch', event => {
       .catch(() => caches.match(request).then(cached => cached || (request.mode === 'navigate' ? caches.match('/index.html') : undefined)))
   );
 });
-
