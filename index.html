@@ -834,7 +834,98 @@
     style.textContent='.dashboard-guide{margin-top:22px}.dashboard-guide-head{display:flex;align-items:end;justify-content:space-between;gap:12px;margin-bottom:12px}.dashboard-guide-head h2{margin:0}.dashboard-guide-head p{margin:4px 0 0;color:#64718a}.dashboard-guide-head>a{color:#ff5e4e;font-weight:900;text-decoration:none}.dashboard-guide-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:11px}.dashboard-guide-card{display:grid;grid-template-columns:38px 1fr;gap:11px;align-items:start;padding:16px;border:1px solid #dfe6f0;border-radius:13px;background:#fff;color:#172852;text-decoration:none;transition:.16s ease}.dashboard-guide-card:hover{border-color:#ff8a7f;box-shadow:0 8px 20px rgba(23,40,82,.08);transform:translateY(-2px)}.dashboard-guide-icon{width:36px;height:36px;display:grid;place-items:center;border-radius:10px;background:#eef2fb;color:#172852;font-weight:900}.dashboard-guide-card:nth-child(3n+2) .dashboard-guide-icon{background:#fff0ed;color:#ff5e4e}.dashboard-guide-card:nth-child(3n) .dashboard-guide-icon{background:#e9f8f6;color:#16807f}.dashboard-guide-card b{display:block;margin-bottom:3px}.dashboard-guide-card small{display:block;color:#64718a;line-height:1.5}@media(max-width:850px){.dashboard-guide-grid{grid-template-columns:1fr 1fr}}@media(max-width:560px){.dashboard-guide-grid{grid-template-columns:1fr}.dashboard-guide-head{align-items:flex-start;flex-direction:column}}';
     document.head.append(style);
     const baseDashboard=window.renderOperationsDashboard;
-    window.renderOperationsDashboard=()=>{baseDashboard();const main=document.getElementById('app');if(!main||main.querySelector('.dashboard-guide'))return;main.insertAdjacentHTML('beforeend',`<section class="dashboard-guide"><div class="dashboard-guide-head"><div><h2>운영시스템 기능 살펴보기</h2><p>궁금한 업무를 선택하면 기능 설명과 사용 화면을 확인할 수 있습니다.</p></div><a href="guide.html">전체 기능안내 →</a></div><div class="dashboard-guide-grid"><a class="dashboard-guide-card" href="guide.html#applicants"><span class="dashboard-guide-icon">人</span><span><b>지원자·배치</b><small>면접, 합격, T/O와 현장 배치</small></span></a><a class="dashboard-guide-card" href="guide.html#attendance"><span class="dashboard-guide-icon">✓</span><span><b>출퇴근·근태</b><small>GPS 출퇴근과 월간 근태 마감</small></span></a><a class="dashboard-guide-card" href="guide.html#payroll"><span class="dashboard-guide-icon">₩</span><span><b>급여정산</b><small>급여계산, 명세서와 이체자료</small></span></a><a class="dashboard-guide-card" href="guide.html#billing"><span class="dashboard-guide-icon">▤</span><span><b>청구관리</b><small>원청사 청구서 작성과 검토</small></span></a><a class="dashboard-guide-card" href="guide.html#ledgers"><span class="dashboard-guide-icon">▥</span><span><b>급여·청구대장</b><small>월별 저장, 기간 조회와 다운로드</small></span></a><a class="dashboard-guide-card" href="guide.html#documents"><span class="dashboard-guide-icon">✎</span><span><b>계약·현장서류</b><small>견적·계약과 도급·파견 문서</small></span></a><a class="dashboard-guide-card" href="guide.html#desktop"><span class="dashboard-guide-icon">▣</span><span><b>PC 설치형</b><small>PC에서 프로그램처럼 실행하고 데이터 연동</small></span></a></div></section>`)};
+    window.renderOperationsDashboard=()=>{baseDashboard();const main=document.getElementById('app');if(!main||main.querySelector('.dashboard-guide'))return;main.insertAdjacentHTML('beforeend',`<section class="dashboard-guide"><div class="dashboard-guide-head"><div><h2>운영시스템 기능 살펴보기</h2><p>궁금한 업무를 선택하면 기능 설명과 사용 화면을 확인할 수 있습니다.</p></div><a href="guide.html">전체 기능안내 →</a></div><div class="dashboard-guide-grid"><a class="dashboard-guide-card" href="guide.html#applicants"><span class="dashboard-guide-icon">人</span><span><b>지원자·배치</b><small>면접, 합격, T/O와 현장 배치</small></span></a><a class="dashboard-guide-card" href="guide.html#vacancy"><span class="dashboard-guide-icon">↻</span><span><b>결원충원</b><small>인재서비스 이용 시 전체 인재풀 후보까지 추천</small></span></a><a class="dashboard-guide-card" href="guide.html#attendance"><span class="dashboard-guide-icon">✓</span><span><b>출퇴근·근태</b><small>GPS 출퇴근과 월간 근태 마감</small></span></a><a class="dashboard-guide-card" href="guide.html#payroll"><span class="dashboard-guide-icon">₩</span><span><b>급여정산</b><small>급여계산, 명세서와 이체자료</small></span></a><a class="dashboard-guide-card" href="guide.html#billing"><span class="dashboard-guide-icon">▤</span><span><b>청구관리</b><small>원청사 청구서 작성과 검토</small></span></a><a class="dashboard-guide-card" href="guide.html#ledgers"><span class="dashboard-guide-icon">▥</span><span><b>급여·청구대장</b><small>월별 저장, 기간 조회와 다운로드</small></span></a><a class="dashboard-guide-card" href="guide.html#documents"><span class="dashboard-guide-icon">✎</span><span><b>계약·현장서류</b><small>견적·계약과 도급·파견 문서</small></span></a><a class="dashboard-guide-card" href="guide.html#desktop"><span class="dashboard-guide-icon">▣</span><span><b>PC 설치형</b><small>PC에서 프로그램처럼 실행하고 데이터 연동</small></span></a></div></section>`)};
+  })();
+  </script>
+  <script>
+  (()=>{
+    const applicantButton=document.querySelector('#sideNav > [data-view="applicants"]');
+    if(!applicantButton)return;
+    const applicantSubnav=document.createElement('div');
+    applicantSubnav.id='applicantSubnav';
+    applicantSubnav.className='applicant-subnav';
+    applicantSubnav.innerHTML='<button data-view="applicants">지원현황</button><button data-view="vacancy-fill">결원충원</button>';
+    applicantButton.after(applicantSubnav);
+
+    const style=document.createElement('style');
+    style.textContent=`
+      #sideNav .applicant-subnav{display:none;margin:2px 5px 5px 34px;padding:5px;border-radius:10px;background:#f4f6fa}
+      #sideNav .applicant-subnav button{display:block;width:100%;min-height:35px;padding:8px 9px;border:0;border-radius:8px;background:transparent;color:#5d6c84;text-align:left;font:inherit;font-size:11px;font-weight:800;cursor:pointer}
+      #sideNav .applicant-subnav button.active{background:#fff;color:#c74f42;box-shadow:0 2px 8px rgba(23,40,82,.07)}
+      .vacancy-guide{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:18px}
+      .vacancy-guide article{padding:18px;border:1px solid #dfe6f0;border-radius:14px;background:#fff}
+      .vacancy-guide article.talent{border-color:#b9e0dc;background:#effaf8}
+      .vacancy-guide span{display:inline-block;margin-bottom:7px;color:#ff5e4e;font-size:11px;font-weight:900;letter-spacing:.08em}
+      .vacancy-guide .talent span{color:#137c7a}.vacancy-guide h3{margin:0 0 7px}.vacancy-guide p{margin:0;color:#64718a;font-size:13px}
+      .vacancy-position-toolbar{display:grid;grid-template-columns:minmax(260px,1fr) auto;gap:12px;align-items:end}
+      .vacancy-position-toolbar label{font-weight:800}.vacancy-position-toolbar select{margin-top:6px}
+      .vacancy-position-summary{display:grid;grid-template-columns:2fr repeat(3,1fr);gap:10px;margin-top:16px}
+      .vacancy-position-summary>div{padding:15px;border-radius:11px;background:#f5f7fb}
+      .vacancy-position-summary span{display:block;color:#6c7890;font-size:12px}.vacancy-position-summary b{display:block;margin-top:3px;font-size:20px}
+      .vacancy-candidate-head{display:flex;align-items:end;justify-content:space-between;gap:12px;margin:24px 0 10px}.vacancy-candidate-head h2{margin:0}.vacancy-candidate-head p{margin:4px 0 0;color:#64718a}
+      .vacancy-candidates{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:11px}
+      .vacancy-candidate{padding:17px;border:1px solid #dfe6f0;border-radius:13px;background:#fff}.vacancy-candidate h3{margin:0 0 4px}.vacancy-candidate p{margin:0 0 10px;color:#64718a;font-size:13px}
+      .vacancy-tags{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:12px}.vacancy-tags span{padding:4px 7px;border-radius:99px;background:#eef3fb;color:#50617c;font-size:11px;font-weight:800}
+      .vacancy-talent-callout{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-top:16px;padding:18px;border:1px solid #b9e0dc;border-radius:14px;background:#effaf8}.vacancy-talent-callout h3{margin:0 0 4px}.vacancy-talent-callout p{margin:0;color:#3e6968;font-size:13px}.vacancy-talent-callout a{flex:0 0 auto;text-decoration:none}
+      @media(max-width:980px){#sideNav .applicant-subnav{display:none!important}.vacancy-guide,.vacancy-candidates{grid-template-columns:1fr}.vacancy-position-summary{grid-template-columns:1fr 1fr}}
+      @media(max-width:620px){.vacancy-position-toolbar{grid-template-columns:1fr}.vacancy-position-summary{grid-template-columns:1fr 1fr}.vacancy-position-summary>div:first-child{grid-column:1/-1}.vacancy-talent-callout{align-items:flex-start;flex-direction:column}}
+    `;
+    document.head.append(style);
+
+    const activeAssignedForJob=jobId=>data.filter(person=>isAcceptedPerson(person)&&personnelAssignedJob(person)===jobId&&!formerWorker(person));
+    const vacancyJobs=()=> (window.operationJobs||[]).map(job=>{const jobId='db-'+job.id,assigned=activeAssignedForJob(jobId).length,to=toValue(job);return {job,jobId,to,assigned,vacancy:Math.max(0,to-assigned)}}).filter(item=>item.vacancy>0);
+    const candidateReason=(person,job)=>{
+      const detail=applicantData(person),jobDetail=jobData(job),tags=[];
+      const desired=String(detail.desiredJob||person.job_title||'').toLowerCase(),position=String(jobDetail.category||jobDetail.title||'').toLowerCase();
+      const region=String(detail.desiredRegion||detail.address||'').toLowerCase(),site=String(jobDetail.workplace||jobDetail.location||jobDetail.region||'').toLowerCase();
+      if(desired&&position&&(desired.includes(position)||position.includes(desired)))tags.push('직종 유사');
+      if(region&&site&&(region.split(/\s+/).some(token=>token.length>1&&site.includes(token))))tags.push('지역 유사');
+      if(formerWorker(person))tags.push('과거 근무자');
+      else if(!personnelAssignedJob(person))tags.push('미배치 인력');
+      if(String(person.job_id)===`db-${job.id}`)tags.push('해당 공고 지원자');
+      return tags.length?tags:['조건 확인 필요'];
+    };
+    const vacancyCandidates=(job,jobId)=>{
+      const seen=new Set();
+      return data.filter(person=>{
+        const key=applicantPersonKey(person);if(seen.has(key))return false;seen.add(key);
+        if(/불합격|거절|취소/i.test(String(person.status||'')))return false;
+        if(personnelAssignedJob(person)===jobId&&!formerWorker(person))return false;
+        return String(person.job_id)===jobId||!personnelAssignedJob(person)||formerWorker(person);
+      }).map(person=>({person,tags:candidateReason(person,job)})).sort((a,b)=>b.tags.length-a.tags.length);
+    };
+
+    window.selectVacancyPosition=value=>{window.vacancyJobId=value;window.renderVacancyFill()};
+    window.openVacancyCandidate=async id=>{
+      const targetJobId=window.vacancyJobId||'',person=data.find(item=>String(item.id)===String(id));
+      if(!person||!targetJobId)return alert('결원 포지션과 후보자를 다시 선택해 주세요.');
+      try{
+        if(String(person.job_id)!==targetJobId){
+          const response=await fetch('/api/operations',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'force-add-applicant',sourceApplicationId:id,targetJobId})}),output=await response.json();
+          if(!response.ok)throw new Error(output.error||'후보자를 결원 포지션에 추가하지 못했습니다.');
+          await loadData();
+        }
+        window.applicantDetailJobId=targetJobId;window.setView('applicants');setTimeout(()=>window.openApplicantJob?.(targetJobId),0);
+      }catch(error){alert(error.message)}
+    };
+    window.renderVacancyFill=()=>{
+      const main=document.getElementById('app'),positions=vacancyJobs();if(!main)return;
+      if(!positions.some(item=>item.jobId===window.vacancyJobId))window.vacancyJobId=positions[0]?.jobId||'';
+      const selected=positions.find(item=>item.jobId===window.vacancyJobId),detail=selected?jobData(selected.job):{},candidates=selected?vacancyCandidates(selected.job,selected.jobId):[];
+      document.querySelectorAll('#sideNav [data-view]').forEach(button=>button.classList.toggle('active',button.dataset.view==='applicants'));
+      applicantSubnav.style.display='block';applicantSubnav.querySelectorAll('button').forEach(button=>button.classList.toggle('active',button.dataset.view==='vacancy-fill'));
+      const options=positions.map(item=>`<option value="${item.jobId}" ${item.jobId===window.vacancyJobId?'selected':''}>${esc(clientNameForJob(item.job))} · ${esc(jobData(item.job).title||'공고명 미입력')} · 결원 ${item.vacancy}명</option>`).join('');
+      const cards=candidates.map(({person,tags})=>{const info=applicantData(person);return `<article class="vacancy-candidate"><h3>${esc(personName(person))}</h3><p>${esc(info.desiredJob||person.job_title||'희망 직종 미등록')} · ${esc(info.desiredRegion||info.address||'희망 지역 미등록')}</p><div class="vacancy-tags">${tags.map(tag=>`<span>${esc(tag)}</span>`).join('')}</div><button class="secondary" onclick="openVacancyCandidate(${person.id})">면접·입사 진행</button></article>`}).join('')||'<div class="empty">자사 보유인력 중 추천할 후보자가 없습니다.</div>';
+      main.innerHTML=`<div class="heading"><div><div class="eyebrow">VACANCY FILLING</div><h1>결원충원</h1><p>결원 포지션을 선택하고 대체 가능한 인력을 면접 제안부터 입사·배치까지 연결합니다.</p></div><button class="secondary" onclick="loadData().then(renderVacancyFill)">새로고침</button></div><section class="vacancy-guide"><article><span>운영시스템 기본</span><h3>자사 보유인력에서 추천</h3><p>자사 지원자, 기존 근무자, 미배치·대기인력을 기준으로 후보자를 추천하고 지원관리 절차로 연결합니다.</p></article><article class="talent"><span>인재서비스 이용 기업</span><h3>전체 인재풀까지 추천</h3><p>기본 후보에 더해 올핸잡 전체 인재풀에서 포지션 조건에 맞는 후보자까지 추가로 추천합니다.</p></article></section><section class="panel"><div class="vacancy-position-toolbar"><label>결원충원 포지션<select onchange="selectVacancyPosition(this.value)"><option value="">결원이 있는 포지션을 선택하세요</option>${options}</select></label><button class="secondary" onclick="setView('people')">배치현황에서 T/O 확인</button></div>${selected?`<div class="vacancy-position-summary"><div><span>선택 포지션</span><b>${esc(detail.title||'공고명 미입력')}</b><small>${esc(detail.workplace||detail.location||detail.region||clientNameForJob(selected.job))}</small></div><div><span>필요인원</span><b>${selected.to}명</b></div><div><span>현재 배치</span><b>${selected.assigned}명</b></div><div><span>결원</span><b>${selected.vacancy}명</b></div></div>`:'<div class="empty">현재 T/O 대비 결원이 등록된 포지션이 없습니다. 배치현황에서 T/O를 먼저 확인해 주세요.</div>'}</section>${selected?`<div class="vacancy-candidate-head"><div><h2>자사 보유인력 추천</h2><p>지원·근무 이력과 미배치 여부를 기준으로 먼저 확인할 후보입니다.</p></div><b>${candidates.length}명</b></div><section class="vacancy-candidates">${cards}</section><section class="vacancy-talent-callout"><div><h3>인재서비스를 이용 중이라면</h3><p>이 포지션에 맞는 올핸잡 전체 인재풀 후보자도 함께 추천받아 면접을 제안할 수 있습니다.</p></div><a class="primary" href="https://allhands-job.com/talents.html" target="_blank" rel="noopener">전체 인재풀 열기</a></section>`:''}`;
+    };
+
+    const vacancyNavigation=window.setView;
+    window.setView=next=>{
+      if(next==='vacancy-fill'){vacancyNavigation('dashboard');setTimeout(window.renderVacancyFill,0);return}
+      vacancyNavigation(next);
+      const visible=next==='applicants';applicantSubnav.style.display=visible?'block':'none';
+      applicantSubnav.querySelectorAll('button').forEach(button=>button.classList.toggle('active',visible&&button.dataset.view==='applicants'));
+    };
   })();
   </script>
   <script src="field-documents.js?v=20261110-editable"></script>
