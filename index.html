@@ -1102,12 +1102,22 @@
     `;
     document.head.append(style);
 
-    const installed=()=>window.matchMedia('(display-mode: standalone)').matches||window.navigator.standalone===true;
+    const INSTALL_STATE_KEY='allhands-operations-installed';
+    const installedLaunch=()=>{
+      const params=new URLSearchParams(location.search);
+      return params.get('source')==='installed'||params.get('app')==='allhands-operations-v4';
+    };
+    const readInstallState=()=>{try{return localStorage.getItem(INSTALL_STATE_KEY)==='1'}catch{return false}};
+    const saveInstallState=value=>{try{value?localStorage.setItem(INSTALL_STATE_KEY,'1'):localStorage.removeItem(INSTALL_STATE_KEY)}catch{}};
+    const standalone=()=>window.matchMedia('(display-mode: standalone)').matches||window.navigator.standalone===true;
+    if(standalone()||installedLaunch())saveInstallState(true);
+    const installed=()=>standalone()||installedLaunch()||readInstallState();
     let installPrompt=null;
     const userArea=document.querySelector('.top .user');
     const button=document.createElement('button');
+    const markInstalled=()=>{saveInstallState(true);button.textContent='설치됨';button.classList.add('installed');button.disabled=true;button.setAttribute('aria-disabled','true')};
     button.type='button';button.className='operations-install-button';button.textContent=installed()?'설치됨':'PC에 설치';
-    if(installed()){button.classList.add('installed');button.disabled=true}
+    if(installed())markInstalled();
     userArea?.insertBefore(button,userArea.firstChild);
 
     const closeGuide=()=>document.querySelector('.operations-install-layer')?.remove();
@@ -1123,8 +1133,9 @@
       if(choice.outcome==='accepted'){button.textContent='설치 중';button.disabled=true}
       installPrompt=null;
     };
-    window.addEventListener('beforeinstallprompt',event=>{event.preventDefault();installPrompt=event;button.hidden=false});
-    window.addEventListener('appinstalled',()=>{installPrompt=null;button.textContent='설치됨';button.classList.add('installed');button.disabled=true;closeGuide()});
+    window.addEventListener('beforeinstallprompt',event=>{event.preventDefault();if(installed())return;installPrompt=event;button.hidden=false});
+    window.addEventListener('appinstalled',()=>{installPrompt=null;markInstalled();closeGuide()});
+    window.matchMedia('(display-mode: standalone)').addEventListener?.('change',event=>{if(event.matches)markInstalled()});
     if('serviceWorker' in navigator)window.addEventListener('load',()=>navigator.serviceWorker.register('/operations-sw.js',{scope:'/'}).catch(()=>{}));
   })();
   </script>
