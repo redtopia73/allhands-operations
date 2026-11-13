@@ -696,7 +696,7 @@
 
     const ledgerNumber = value => Number(String(value ?? '').replace(/[^0-9.-]/g, '')) || 0;
     const ledgerData = item => parse(item?.data);
-    const ledgerWon = value => won(Number(value) || 0);
+    const ledgerWon = value => won(ledgerNumber(value));
     const ledgerMonthLabel = month => monthName(month);
     const latestDocuments = (documents, type, keyOf) => {
       const found = new Map();
