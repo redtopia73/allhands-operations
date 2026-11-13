@@ -121,11 +121,22 @@ module.exports = async (req, res) => {
       return res.status(200).json({ ok: true, role: 'admin' });
     }
     const id = clean(input.id), password = String(input.password || '');
-    if (!id || !password) return res.status(400).json({ error: '기업 이메일 또는 사업자번호와 비밀번호를 입력해 주세요.' });
+    if (!id || !password) return res.status(400).json({ error: '기업·담당자 이메일 또는 사업자번호와 비밀번호를 입력해 주세요.' });
     const db = await ensureTables();
+    const hash = crypto.createHash('sha256').update(password).digest('hex');
+    const teamUsers = await db.query("SELECT id,owner_company_id,name,email,account_role,permissions FROM allhands_operation_users WHERE lower(email)=lower($1) AND password_hash=$2 AND status='active' LIMIT 1", [id, hash]);
+    const teamUser = teamUsers[0];
+    if (teamUser) {
+      const memberships = await db.query("SELECT data FROM allhands_signup_applications WHERE id=$1 AND kind='company' AND status='active' LIMIT 1", [Number(teamUser.owner_company_id)]);
+      if (memberships[0]?.data?.membershipTier !== 'operations') return res.status(403).json({ error: '소속 기업의 운영관리회원 권한을 확인해 주세요.' });
+      await db.query('UPDATE allhands_operation_users SET last_login_at=NOW(),updated_at=NOW() WHERE id=$1', [Number(teamUser.id)]);
+      const payload = Buffer.from(JSON.stringify({ role:'company', id:Number(teamUser.owner_company_id), accountId:Number(teamUser.id), accountRole:String(teamUser.account_role||'field'), accountName:String(teamUser.name||'담당자').slice(0,80), permissions:Array.isArray(teamUser.permissions)?teamUser.permissions:[], expires:Date.now()+86400000 })).toString('base64url');
+      res.setHeader('Set-Cookie', `allhands_company=${payload}.${sign(payload, secret)}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=86400`);
+      return res.status(200).json({ ok:true, role:'company', teamUser:true });
+    }
     const rows = await db.query("SELECT id, data FROM allhands_signup_applications WHERE kind='company' AND status='active' AND data->>'membershipTier'='operations' AND (lower(data->>'companyEmail')=lower($1) OR data->>'businessNumber'=$1 OR data->>'companyPhone'=$1) LIMIT 1", [id]);
-    const row = rows[0], hash = crypto.createHash('sha256').update(password).digest('hex');
-    if (!row || row.data.passwordHash !== hash) return res.status(401).json({ error: '기업 이메일·사업자번호 또는 비밀번호가 올바르지 않습니다.' });
+    const row = rows[0];
+    if (!row || row.data.passwordHash !== hash) return res.status(401).json({ error: '기업·담당자 이메일, 사업자번호 또는 비밀번호가 올바르지 않습니다.' });
     const payload = Buffer.from(JSON.stringify({ role: 'company', id: Number(row.id), expires: Date.now() + 86400000 })).toString('base64url');
     res.setHeader('Set-Cookie', `allhands_company=${payload}.${sign(payload, secret)}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=86400`);
     return res.status(200).json({ ok: true, role: 'company' });
@@ -133,3 +144,4 @@ module.exports = async (req, res) => {
     return res.status(500).json({ error: errorKind(error) });
   }
 };
+
