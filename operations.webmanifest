@@ -2,8 +2,8 @@
   "name": "올핸잡 현장인력 운영관리",
   "short_name": "올핸잡 운영관리",
   "description": "현장인력 채용부터 배치·근태·급여·청구·결원충원까지 연결하는 운영관리 앱입니다.",
-  "id": "/operations",
-  "start_url": "/?source=installed#dashboard",
+  "id": "/allhands-operations-v4",
+  "start_url": "/?source=installed&app=allhands-operations-v4#dashboard",
   "scope": "/",
   "display": "standalone",
   "display_override": ["window-controls-overlay", "standalone", "minimal-ui"],
@@ -14,7 +14,7 @@
   "categories": ["business", "productivity"],
   "icons": [
     {
-      "src": "/operations-icon.png?v=3",
+      "src": "/allhands-operations-app-icon-v4.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"

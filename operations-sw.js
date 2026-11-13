@@ -1,10 +1,10 @@
-const CACHE_NAME = 'allhands-operations-v2';
+const CACHE_NAME = 'allhands-operations-v3';
 const APP_SHELL = [
   '/',
   '/index.html',
   '/guide.html',
-  '/operations.webmanifest',
-  '/operations-icon.png?v=3'
+  '/operations.webmanifest?v=4',
+  '/allhands-operations-app-icon-v4.png'
 ];
 
 self.addEventListener('install', event => {
