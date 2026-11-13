@@ -39,6 +39,8 @@ async function ensureTables() {
   await db.query("CREATE TABLE IF NOT EXISTS allhands_operation_workers (id BIGSERIAL PRIMARY KEY, owner_company_id TEXT, client_name TEXT NOT NULL, job_title TEXT NOT NULL DEFAULT '', data JSONB NOT NULL, operation JSONB NOT NULL DEFAULT '{}'::jsonb, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW())");
   await db.query("CREATE TABLE IF NOT EXISTS allhands_external_approvals (id BIGSERIAL PRIMARY KEY, owner_company_id TEXT, document_id BIGINT NOT NULL, document_type TEXT NOT NULL, recipient_name TEXT NOT NULL, recipient_email TEXT NOT NULL, access_token_hash TEXT NOT NULL UNIQUE, status TEXT NOT NULL DEFAULT 'pending', document_snapshot JSONB NOT NULL, events JSONB NOT NULL DEFAULT '[]'::jsonb, opened_at TIMESTAMPTZ, responded_at TIMESTAMPTZ, expires_at TIMESTAMPTZ NOT NULL, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW())");
   await db.query("CREATE INDEX IF NOT EXISTS allhands_external_approvals_owner_idx ON allhands_external_approvals (owner_company_id, created_at DESC)");
+  await db.query("CREATE TABLE IF NOT EXISTS allhands_operation_users (id BIGSERIAL PRIMARY KEY, owner_company_id BIGINT NOT NULL, name TEXT NOT NULL, email TEXT NOT NULL, password_hash TEXT NOT NULL, account_role TEXT NOT NULL DEFAULT 'field', permissions JSONB NOT NULL DEFAULT '[]'::jsonb, status TEXT NOT NULL DEFAULT 'active', last_login_at TIMESTAMPTZ, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), UNIQUE(owner_company_id,email))");
+  await db.query("CREATE INDEX IF NOT EXISTS allhands_operation_users_owner_idx ON allhands_operation_users (owner_company_id, status, created_at DESC)");
   return db;
 }
 
@@ -68,4 +70,5 @@ function errorKind(error) {
 }
 
 module.exports = { sql, ensureTables, cookie, valid, body, errorKind };
+
 
