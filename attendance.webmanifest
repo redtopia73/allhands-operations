@@ -4,7 +4,7 @@
   "description": "출근·퇴근 시간과 현장 위치를 운영관리 근태에 기록합니다.",
   "start_url": "/attendance.html",
   "id": "/attendance.html",
-  "scope": "/",
+  "scope": "/attendance.html",
   "display": "standalone",
   "display_override": ["standalone", "minimal-ui"],
   "orientation": "portrait",
@@ -13,4 +13,5 @@
   "lang": "ko",
   "icons": [{"src":"/attendance-icon.png?v=2","sizes":"512x512","type":"image/png","purpose":"any maskable"}]
 }
+
 
