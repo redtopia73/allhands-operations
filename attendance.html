@@ -71,7 +71,8 @@
     function showInstallGuide(){const ios=/iphone|ipad|ipod/i.test(navigator.userAgent),samsung=/samsungbrowser/i.test(navigator.userAgent);$('#installGuideIntro').textContent=ios?'Safari의 공유 메뉴에서 설치합니다.':samsung?'삼성 인터넷 메뉴에서 설치합니다.':'Chrome 메뉴에서 홈 화면에 추가합니다.';$('#installSteps').innerHTML=(ios?['화면 아래의 공유 버튼을 누르세요.','메뉴에서 “홈 화면에 추가”를 선택하세요.','오른쪽 위 “추가”를 누르세요.']:samsung?['아래 메뉴의 ≡ 버튼을 누르세요.','“현재 페이지 추가”를 선택하세요.','“홈 화면”을 눌러 설치하세요.']:['오른쪽 위 ⋮ 메뉴를 누르세요.','“앱 설치” 또는 “홈 화면에 추가”를 선택하세요.','설치 또는 추가 버튼을 누르세요.']).map(step=>`<li>${step}</li>`).join('');$('#installGuide').showModal()}
     $('#installGuideClose').onclick=()=>$('#installGuide').close();$('#installGuide').onclick=event=>{if(event.target===$('#installGuide'))$('#installGuide').close()};
     $('#install').onclick=async()=>{if(deferredInstall){deferredInstall.prompt();const choice=await deferredInstall.userChoice;deferredInstall=null;if(choice.outcome==='accepted'){$('#install').style.display='none';$('#installCopy').style.display='none'}else showInstallGuide()}else showInstallGuide()};
-    if('serviceWorker'in navigator)window.addEventListener('load',()=>navigator.serviceWorker.register('/attendance-sw.js').then(registration=>registration.update()).catch(()=>{}));
+    if('serviceWorker'in navigator)window.addEventListener('load',()=>navigator.serviceWorker.register('/attendance-sw.js',{scope:'/attendance.html'}).then(registration=>registration.update()).catch(()=>{}));
   </script>
 </body>
 </html>
+
