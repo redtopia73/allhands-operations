@@ -942,6 +942,63 @@
     };
   })();
   </script>
+  <script>
+  (()=>{
+    const style=document.createElement('style');
+    style.textContent=`
+      .attendance-alert-badge{display:inline-flex;margin-left:6px;padding:2px 6px;border-radius:99px;background:#e54848;color:#fff;font-size:10px;font-weight:900;line-height:1.35}
+      .attendance-alert-summary{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:0 0 16px}
+      .attendance-alert-summary>div{padding:16px;border:1px solid #dfe6f0;border-radius:13px;background:#fff}
+      .attendance-alert-summary span{display:block;color:#69758a;font-size:12px}.attendance-alert-summary b{display:block;margin-top:3px;font-size:24px}
+      .attendance-alert-summary .danger{border-color:#ffc9c3;background:#fff5f3}.attendance-alert-summary .danger b{color:#c63e35}
+      .attendance-alert-summary .warning{border-color:#f3d5ad;background:#fff9ef}.attendance-alert-summary .warning b{color:#a96516}
+      .attendance-alert-panel{margin-bottom:18px;border-color:#f1c2bb!important}.attendance-alert-panel h2{margin-bottom:4px}.attendance-alert-list{display:grid;gap:8px;margin-top:14px}
+      .attendance-alert-item{display:grid;grid-template-columns:10px 1fr auto;gap:11px;align-items:center;padding:12px 13px;border:1px solid #e4e9f1;border-radius:11px;background:#fff}
+      .attendance-alert-dot{width:10px;height:10px;border-radius:50%;background:#e54848}.attendance-alert-item.warning .attendance-alert-dot{background:#e99a2f}
+      .attendance-alert-item b{display:block}.attendance-alert-item small{display:block;margin-top:2px;color:#6c7890}.attendance-alert-item button{white-space:nowrap}
+      @media(max-width:680px){.attendance-alert-summary{grid-template-columns:1fr}.attendance-alert-item{grid-template-columns:10px 1fr}.attendance-alert-item button{grid-column:2;width:100%}}
+    `;
+    document.head.append(style);
+
+    const seoulParts=()=>{const parts=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Seoul',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',hourCycle:'h23'}).formatToParts(new Date()),value=type=>parts.find(part=>part.type===type)?.value||'';return {date:`${value('year')}-${value('month')}-${value('day')}`,month:`${value('year')}-${value('month')}`,day:String(Number(value('day'))),hour:Number(value('hour'))||0,weekday:new Date(`${value('year')}-${value('month')}-${value('day')}T00:00:00+09:00`).getDay()}};
+    const todayWorkerRecord=person=>{const today=seoulParts().date;return workerAttendance(person).find(row=>String(row?.workDate||'')===today)||null};
+    const attendanceAnomalies=()=>{
+      const now=seoulParts(),weekday=now.weekday,workday=weekday>=1&&weekday<=5,alerts=[];
+      attendancePeople().forEach(person=>{
+        const record=todayWorkerRecord(person),day=attendanceCalendar(person).months?.[now.month]?.days?.[now.day]||{},locationStatus=String(record?.checkOutLocation?.status||record?.checkInLocation?.status||day.attendanceStatus||''),attendance=String(record?.attendance||operation(person).attendance||'');
+        let issue='',severity='warning';
+        if(/결근|무단/i.test(attendance)){issue='결근 확인';severity='danger'}
+        else if(/지각/i.test(attendance)){issue='지각 확인';severity='danger'}
+        else if(/밖|오차|확인 필요|미등록|최초|담당자/i.test(locationStatus)){issue='GPS 위치 확인 필요';severity='danger'}
+        else if(record?.checkInAt&&!record?.checkOutAt&&now.hour>=20){issue='퇴근 기록 누락';severity='warning'}
+        else if(workday&&now.hour>=10&&!record?.checkInAt&&String(operation(person).workType||'주간')==='주간'){issue='출근 기록 없음';severity='warning'}
+        if(issue)alerts.push({person,issue,severity,detail:locationStatus||attendance||'오늘 출퇴근 기록을 확인해 주세요.'});
+      });
+      return alerts.sort((a,b)=>(a.severity==='danger'?0:1)-(b.severity==='danger'?0:1));
+    };
+    const attendanceMenu=document.querySelector('#sideNav > [data-view="attendance"]');
+    const updateAttendanceAlertBadge=()=>{
+      if(!attendanceMenu)return;const count=attendanceAnomalies().length;
+      attendanceMenu.querySelector('.attendance-alert-badge')?.remove();
+      if(count)attendanceMenu.insertAdjacentHTML('beforeend',`<span class="attendance-alert-badge">${count}</span>`);
+    };
+    const attendanceAlertPanel=()=>{
+      const alerts=attendanceAnomalies(),danger=alerts.filter(item=>item.severity==='danger').length,warning=alerts.length-danger;
+      const list=alerts.map(item=>`<article class="attendance-alert-item ${item.severity}"><span class="attendance-alert-dot"></span><div><b>${esc(personName(item.person))} · ${esc(item.issue)}</b><small>${esc(personnelWorksite(item.person))} · ${esc(item.detail)}</small></div><button class="secondary" onclick="openAttendance(${item.person.id})">근태 확인</button></article>`).join('');
+      return `<section class="attendance-alert-summary"><div class="danger"><span>즉시 확인</span><b>${danger}건</b></div><div class="warning"><span>기록 확인</span><b>${warning}건</b></div><div><span>오늘 전체 확인 필요</span><b>${alerts.length}건</b></div></section><section class="panel attendance-alert-panel"><h2>오늘의 근태 이상</h2><p class="muted">결근·지각·GPS 이상과 출퇴근 누락을 먼저 확인하세요.</p><div class="attendance-alert-list">${list||'<div class="empty">현재 확인이 필요한 근태 이상이 없습니다.</div>'}</div></section>`;
+    };
+
+    const baseAttendanceBoard=window.renderAttendanceBoard;
+    window.renderAttendanceBoard=()=>{
+      baseAttendanceBoard();
+      const main=document.getElementById('app'),heading=main?.querySelector('.heading');if(!main||!heading)return;
+      heading.insertAdjacentHTML('afterend',attendanceAlertPanel());updateAttendanceAlertBadge();
+    };
+    const alertLoadData=window.loadData;
+    window.loadData=async()=>{await alertLoadData();updateAttendanceAlertBadge()};
+    updateAttendanceAlertBadge();
+  })();
+  </script>
   <script src="field-documents.js?v=20261110-editable"></script>
 </body>
 </html>
