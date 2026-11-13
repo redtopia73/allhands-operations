@@ -680,6 +680,120 @@
       }
     }, true);
   </script>
+  <script>
+  (() => {
+    const ledgerMenu = document.createElement('button');
+    ledgerMenu.dataset.view = 'ledger';
+    ledgerMenu.textContent = '대장관리';
+    const invoiceMenu = document.querySelector('#sideNav > [data-view="invoice"]');
+    if (!document.querySelector('#sideNav > [data-view="ledger"]')) invoiceMenu?.after(ledgerMenu);
+
+    const ledgerStyle = document.createElement('style');
+    ledgerStyle.textContent = '.ledger-toolbar{display:flex;align-items:end;justify-content:space-between;gap:12px;flex-wrap:wrap}.ledger-toolbar label{min-width:180px}.ledger-kpis{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px;margin:18px 0}.ledger-kpi{padding:15px;border:1px solid #dfe6f0;border-radius:12px;background:#fff}.ledger-kpi span{display:block;color:#6a7890;font-size:12px;font-weight:800}.ledger-kpi b{display:block;margin-top:6px;color:#172852;font-size:20px}.ledger-section{margin-top:18px}.ledger-section-head{display:flex;align-items:end;justify-content:space-between;gap:10px;margin-bottom:10px}.ledger-section-head h2{margin:0}.ledger-site-card{margin-top:12px;padding:16px;border:1px solid #dfe6f0;border-radius:13px;background:#fff}.ledger-site-card h3{margin:0 0 10px}.ledger-table{width:100%;border-collapse:collapse;font-size:13px}.ledger-table th,.ledger-table td{padding:9px;border:1px solid #dbe3ef;text-align:right;white-space:nowrap}.ledger-table th{background:#eff3fb;color:#43516d;text-align:center}.ledger-table td:first-child,.ledger-table td:nth-child(2){text-align:left}.ledger-total-row td{background:#f5f8fd;font-weight:900}.ledger-status{display:inline-flex;padding:4px 8px;border-radius:99px;background:#eaf8f0;color:#16734d;font-size:11px;font-weight:850}.ledger-year{overflow:auto}.ledger-empty{padding:28px;text-align:center;color:#6a7890;border:1px dashed #cbd5e4;border-radius:11px}@media(max-width:980px){.ledger-kpis{grid-template-columns:repeat(3,1fr)}}@media(max-width:620px){.ledger-kpis{grid-template-columns:1fr 1fr}.ledger-toolbar{align-items:stretch}.ledger-toolbar label{width:100%}}';
+    document.head.append(ledgerStyle);
+
+    const ledgerNumber = value => Number(String(value ?? '').replace(/[^0-9.-]/g, '')) || 0;
+    const ledgerData = item => parse(item?.data);
+    const ledgerWon = value => won(Number(value) || 0);
+    const ledgerMonthLabel = month => monthName(month);
+    const latestDocuments = (documents, type, keyOf) => {
+      const found = new Map();
+      [...documents].filter(item => item.document_type === type).sort((a,b) => Number(b.id)-Number(a.id)).forEach(item => {
+        const data = ledgerData(item), key = keyOf(data);
+        if (key && !found.has(key)) found.set(key, { ...data, documentId:item.id, updatedAt:item.updated_at || data.updatedAt || '' });
+      });
+      return [...found.values()];
+    };
+    const currentPayrollSnapshot = person => {
+      const op = operation(person), summary = op.payrollSummary || {};
+      return {
+        month:op.payrollConfirmedMonth || '', site:personnelWorksite(person), applicationId:String(person.id), workerName:personName(person),
+        normalHours:Number(summary.normalHours)||0, overtimeHours:Number(summary.overtimeHours)||0, holidayHours:Number(summary.holidayHours)||0,
+        grossPay:ledgerNumber(summary.grossPay || op.grossPay), netPay:ledgerNumber(summary.netPay || op.netPay),
+        deductions:Math.max(0, ledgerNumber(summary.grossPay || op.grossPay)-ledgerNumber(summary.netPay || op.netPay)),
+        payDate:summary.payDate || op.payDate || '', confirmedAt:op.payrollConfirmedAt || ''
+      };
+    };
+    const ledgerPayrollRows = documents => {
+      const saved = latestDocuments(documents, 'payroll-ledger', item => `${item.month}|${item.applicationId}`);
+      const keys = new Set(saved.map(item => `${item.month}|${item.applicationId}`));
+      data.filter(person => operation(person).payrollConfirmed && operation(person).payrollConfirmedMonth).forEach(person => {
+        const snapshot = currentPayrollSnapshot(person), key = `${snapshot.month}|${snapshot.applicationId}`;
+        if (!keys.has(key)) saved.push(snapshot);
+      });
+      return saved;
+    };
+    const ledgerInvoiceRows = documents => latestDocuments(documents, 'invoice', item => `${item.invoiceMonth}|${item.invoiceClient}`);
+    const ledgerApprovalStatus = (invoice, approvals) => {
+      const records = approvals.filter(item => String(item.document_id) === String(invoice.documentId)).sort((a,b) => String(b.created_at||'').localeCompare(String(a.created_at||'')));
+      const labels = {pending:'검토 대기',opened:'열람 완료',approved:'승인 완료',rejected:'반려','revision-requested':'수정 요청'};
+      return labels[records[0]?.status] || '작성 완료';
+    };
+    const ledgerTotals = (payrollRows, invoiceRows) => ({
+      gross:payrollRows.reduce((sum,row)=>sum+ledgerNumber(row.grossPay),0),
+      deductions:payrollRows.reduce((sum,row)=>sum+ledgerNumber(row.deductions ?? (ledgerNumber(row.grossPay)-ledgerNumber(row.netPay))),0),
+      net:payrollRows.reduce((sum,row)=>sum+ledgerNumber(row.netPay),0),
+      supply:invoiceRows.reduce((sum,row)=>sum+ledgerNumber(row.invoiceSubtotal),0),
+      vat:invoiceRows.reduce((sum,row)=>sum+ledgerNumber(row.invoiceVat),0),
+      invoice:invoiceRows.reduce((sum,row)=>sum+ledgerNumber(row.invoiceGrandTotal),0)
+    });
+    const ensurePayrollSnapshots = async documents => {
+      const keys = new Set(documents.filter(item=>item.document_type==='payroll-ledger').map(item=>{const value=ledgerData(item);return `${value.month}|${value.applicationId}`}));
+      const missing = data.filter(person=>{const op=operation(person);return op.payrollConfirmed&&op.payrollConfirmedMonth&&!keys.has(`${op.payrollConfirmedMonth}|${person.id}`)});
+      for (const person of missing) {
+        try { await saveDocument('payroll-ledger-save', currentPayrollSnapshot(person)); } catch {}
+      }
+      return missing.length;
+    };
+
+    window.renderLedgerManagement = async () => {
+      const main = document.getElementById('app');
+      if (!main) return;
+      document.querySelectorAll('#sideNav [data-view]').forEach(button => button.classList.toggle('active', button.dataset.view === 'ledger'));
+      const selectedMonth = window.ledgerMonth || new Date().toISOString().slice(0,7);
+      let output = { documents:[], externalApprovals:[] };
+      try { const response = await fetch('/api/operations',{cache:'no-store'}); output = await response.json(); if (!response.ok) throw new Error(output.error); } catch (error) { main.innerHTML = `<div class="empty">대장자료를 불러오지 못했습니다. ${esc(error.message||'')}</div>`; return; }
+      if (await ensurePayrollSnapshots(output.documents || [])) {
+        try { const response = await fetch('/api/operations',{cache:'no-store'}); const refreshed = await response.json(); if (response.ok) output = refreshed; } catch {}
+      }
+      const documents = output.documents || [], approvals = output.externalApprovals || [];
+      const allPayroll = ledgerPayrollRows(documents), allInvoices = ledgerInvoiceRows(documents);
+      const monthPayroll = allPayroll.filter(row=>row.month===selectedMonth), monthInvoices = allInvoices.filter(row=>row.invoiceMonth===selectedMonth), totals = ledgerTotals(monthPayroll, monthInvoices);
+      const payrollGroups = monthPayroll.reduce((groups,row)=>{const site=row.site||'근무지 미지정';(groups[site]??=[]).push(row);return groups},{});
+      const siteSections = Object.entries(payrollGroups).map(([site,rows])=>{const siteTotals=ledgerTotals(rows,[]);return `<article class="ledger-site-card"><h3>${esc(site)} <small>${rows.length}명</small></h3><div style="overflow:auto"><table class="ledger-table"><thead><tr><th>근로자</th><th>지급일</th><th>정상/연장/휴일</th><th>총지급액</th><th>공제액</th><th>실지급액</th><th>상태</th></tr></thead><tbody>${rows.map(row=>`<tr><td>${esc(row.workerName||'근로자')}</td><td>${esc(row.payDate||'-')}</td><td>${Number(row.normalHours)||0} / ${Number(row.overtimeHours)||0} / ${Number(row.holidayHours)||0}</td><td>${ledgerWon(row.grossPay)}</td><td>${ledgerWon(row.deductions)}</td><td>${ledgerWon(row.netPay)}</td><td><span class="ledger-status">확정</span></td></tr>`).join('')}<tr class="ledger-total-row"><td colspan="3">${esc(site)} 합계</td><td>${ledgerWon(siteTotals.gross)}</td><td>${ledgerWon(siteTotals.deductions)}</td><td>${ledgerWon(siteTotals.net)}</td><td>${rows.length}명</td></tr></tbody></table></div></article>`}).join('') || '<div class="ledger-empty">선택한 월의 확정 급여가 없습니다.</div>';
+      const invoiceTable = monthInvoices.length ? `<div style="overflow:auto"><table class="ledger-table"><thead><tr><th>원청사</th><th>청구일</th><th>투입인원</th><th>공급가액</th><th>부가세</th><th>총청구액</th><th>상태</th></tr></thead><tbody>${monthInvoices.map(row=>`<tr><td>${esc(row.invoiceClient||row.invoiceRecipient||'원청사 미지정')}</td><td>${esc(row.invoiceDate||'-')}</td><td>${Array.isArray(row.rows)?row.rows.length:0}명</td><td>${ledgerWon(ledgerNumber(row.invoiceSubtotal))}</td><td>${ledgerWon(ledgerNumber(row.invoiceVat))}</td><td>${ledgerWon(ledgerNumber(row.invoiceGrandTotal))}</td><td><span class="ledger-status">${esc(ledgerApprovalStatus(row,approvals))}</span></td></tr>`).join('')}<tr class="ledger-total-row"><td colspan="3">월 청구 합계</td><td>${ledgerWon(totals.supply)}</td><td>${ledgerWon(totals.vat)}</td><td>${ledgerWon(totals.invoice)}</td><td>${monthInvoices.length}개 원청사</td></tr></tbody></table></div>` : '<div class="ledger-empty">선택한 월의 저장된 청구서가 없습니다.</div>';
+      const year = selectedMonth.slice(0,4), annualRows = Array.from({length:12},(_,index)=>{const month=`${year}-${String(index+1).padStart(2,'0')}`,payroll=allPayroll.filter(row=>row.month===month),invoices=allInvoices.filter(row=>row.invoiceMonth===month),sum=ledgerTotals(payroll,invoices);return `<tr><td>${index+1}월</td><td>${payroll.length}명</td><td>${ledgerWon(sum.gross)}</td><td>${ledgerWon(sum.net)}</td><td>${invoices.length}개</td><td>${ledgerWon(sum.invoice)}</td></tr>`}).join('');
+      main.innerHTML = `<div class="heading"><div><div class="eyebrow">MONTHLY LEDGER</div><h1>대장관리</h1><p>월별 급여 지급액과 원청사별 청구액을 한 흐름으로 확인합니다.</p></div><button class="secondary" onclick="renderLedgerManagement()">새로고침</button></div><section class="panel ledger-section"><div class="ledger-toolbar"><div><h2>${ledgerMonthLabel(selectedMonth)} 월간 정산 요약</h2><p class="muted">확정 급여와 저장된 청구서의 최신본 기준입니다.</p></div><label>대상월<input type="month" value="${selectedMonth}" onchange="ledgerMonth=this.value;renderLedgerManagement()"></label></div><div class="ledger-kpis"><div class="ledger-kpi"><span>총지급액</span><b>${ledgerWon(totals.gross)}</b></div><div class="ledger-kpi"><span>총공제액</span><b>${ledgerWon(totals.deductions)}</b></div><div class="ledger-kpi"><span>실지급액</span><b>${ledgerWon(totals.net)}</b></div><div class="ledger-kpi"><span>청구 공급가액</span><b>${ledgerWon(totals.supply)}</b></div><div class="ledger-kpi"><span>부가세</span><b>${ledgerWon(totals.vat)}</b></div><div class="ledger-kpi"><span>총청구액</span><b>${ledgerWon(totals.invoice)}</b></div></div></section><section class="panel ledger-section"><div class="ledger-section-head"><div><h2>급여대장</h2><p class="muted">근무지별 확정 급여 합계와 근로자 상세입니다.</p></div><b>${monthPayroll.length}명 · 실지급 ${ledgerWon(totals.net)}</b></div>${siteSections}</section><section class="panel ledger-section"><div class="ledger-section-head"><div><h2>청구대장</h2><p class="muted">원청사별 최신 청구서와 월 합계입니다.</p></div><b>${monthInvoices.length}개 · 청구 ${ledgerWon(totals.invoice)}</b></div>${invoiceTable}</section><section class="panel ledger-section ledger-year"><div class="ledger-section-head"><div><h2>${year}년 연간 합계</h2><p class="muted">1월부터 12월까지 지급·청구 흐름을 비교합니다.</p></div></div><table class="ledger-table"><thead><tr><th>월</th><th>지급인원</th><th>총지급액</th><th>실지급액</th><th>청구 원청사</th><th>총청구액</th></tr></thead><tbody>${annualRows}</tbody></table></section>`;
+    };
+
+    const ledgerNavigation = window.setView;
+    window.setView = next => {
+      if (next === 'ledger') { ledgerNavigation('dashboard'); window.__operationsRequestedView='ledger'; setTimeout(window.renderLedgerManagement,0); return; }
+      ledgerNavigation(next);
+    };
+
+    const confirmPayrollWithLedger = window.confirmPayroll;
+    window.confirmPayroll = async id => {
+      const person = data.find(item=>String(item.id)===String(id)), month = invoiceMonthKey();
+      const snapshot = person ? {
+        month, site:personnelWorksite(person), applicationId:String(id), workerName:personName(person),
+        normalHours:payrollHours(person).normal, overtimeHours:payrollHours(person).overtime, holidayHours:payrollHours(person).holiday,
+        grossPay:payrollNumber(`pc-${id}-total`), netPay:payrollNumber(`pc-${id}-net`),
+        deductions:payrollNumber(`pc-${id}-deducttotal`), payDate:operation(person).payDate||'', confirmedAt:new Date().toISOString()
+      } : null;
+      await confirmPayrollWithLedger(id);
+      const refreshed = data.find(item=>String(item.id)===String(id)), op = refreshed ? operation(refreshed) : {};
+      if (snapshot && op.payrollConfirmed && op.payrollConfirmedMonth === month) {
+        try {
+          const output = await fetch('/api/operations',{cache:'no-store'}).then(response=>response.json());
+          const exists = (output.documents||[]).some(item=>{const value=ledgerData(item);return item.document_type==='payroll-ledger'&&value.month===month&&String(value.applicationId)===String(id)});
+          if (!exists) await saveDocument('payroll-ledger-save', snapshot);
+        } catch { alert('급여는 확정되었지만 급여대장 저장을 다시 확인해 주세요.'); }
+      }
+    };
+  })();
+  </script>
+
   <script src="field-documents.js?v=20261110-editable"></script>
 </body>
 </html>
