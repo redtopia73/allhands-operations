@@ -24,25 +24,38 @@
     const results = [];
     const required = (value, code, message) => { if (!clean(value)) results.push(item('error', code, message)); };
     const resignation = document.templateId === 'resignation-letter';
+    const employment = document.templateId === 'employment-contract';
+    const personnel = resignation || employment;
     required(document.provider, 'company', '회사 정보가 필요합니다.');
     required(document.managedSite || document.site, 'site', '관리 사업장을 선택해 주세요.');
     required(document.writtenDate, 'written-date', '작성일을 입력해 주세요.');
-    if (!resignation && (document.startDate || document.endDate || /계약|파견/.test(template?.title || ''))) {
+    if (!personnel && (document.startDate || document.endDate || /계약|파견/.test(template?.title || ''))) {
       required(document.startDate, 'start-date', '계약 시작일을 입력해 주세요.');
       required(document.endDate, 'end-date', '계약 종료일을 입력해 주세요.');
       if (document.startDate && document.endDate && document.startDate > document.endDate) results.push(item('error', 'date-order', '계약 종료일은 시작일보다 빠를 수 없습니다.'));
     }
-    const workerRequired = ['conditions-notice', 'dispatch-ledger', 'resignation-letter'].includes(document.templateId);
+    const workerRequired = ['conditions-notice', 'dispatch-ledger', 'employment-contract', 'resignation-letter'].includes(document.templateId);
     if (workerRequired) required(document.managedWorker, 'worker', '대상 근로자를 선택해 주세요.');
     const workHours = findLabel(document, /근로시간|근무시간|휴게시간/);
     const wage = findLabel(document, /임금|도급대가|파견대가|계약금액|정산 금액/);
     const payDay = findLabel(document, /지급일|지급조건/);
-    if (/contract|conditions-notice|dispatch-ledger/.test(document.templateId || '')) {
+    if (!personnel && /contract|conditions-notice|dispatch-ledger/.test(document.templateId || '')) {
       required(workHours, 'work-hours', '근무시간·휴게시간을 입력해 주세요.');
       required(wage, 'wage', '임금 또는 계약금액을 입력해 주세요.');
       required(payDay, 'pay-day', '임금·대가 지급일 또는 지급조건을 입력해 주세요.');
     }
-    if (resignation) {
+    if (employment) {
+      required(findLabel(document, /근로계약기간/), 'employment-period', '근로계약기간을 입력해 주세요. 기간의 정함이 없으면 그 내용을 적어 주세요.');
+      required(findLabel(document, /근무장소/), 'workplace', '근무장소를 입력해 주세요.');
+      required(findLabel(document, /담당업무/), 'duties', '담당업무를 입력해 주세요.');
+      required(workHours, 'work-hours', '소정근로시간과 휴게시간을 입력해 주세요.');
+      required(wage, 'wage', '임금 구성항목과 계산방법을 입력해 주세요.');
+      required(payDay, 'pay-day', '임금 지급방법과 지급일을 입력해 주세요.');
+      required(findLabel(document, /주휴일|휴일/), 'holiday', '주휴일·휴일을 입력해 주세요.');
+      required(findLabel(document, /연차유급휴가/), 'annual-leave', '연차유급휴가 사항을 입력해 주세요.');
+      required(document.principalSignature, 'employer-signature', '사용자 서명·확인이 필요합니다.');
+      required(document.workerSignature, 'worker-signature', '근로자 서명·확인이 필요합니다.');
+    } else if (resignation) {
       required(findLabel(document, /퇴직 예정일|최종 근무일/), 'resignation-date', '최종 근무일 또는 퇴직 예정일을 입력해 주세요.');
       required(findLabel(document, /사직 사유/), 'resignation-reason', '사직 사유를 입력해 주세요.');
       required(document.workerSignature, 'worker-signature', '제출인 서명·확인이 필요합니다.');

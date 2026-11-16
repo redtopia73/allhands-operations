@@ -46,3 +46,17 @@ test('사직서는 대상 근로자와 퇴직일·사유·제출인 서명을 �
   const missingResult = validation.validateRequired({ ...resignation, fields: ['포장', '2026-01-01', '', '', ''] }, { title: '사직서' });
   assert.deepEqual(missingResult.filter(item => item.level === 'error').map(item => item.code), ['resignation-date', 'resignation-reason']);
 });
+
+test('근로계약서는 법정 근로조건과 사용자·근로자 서명을 확인한다', () => {
+  const employment = {
+    templateId: 'employment-contract', title: '근로계약서', managedSite: '화성 현장', site: '화성 현장',
+    managedWorker: '12', workerName: '홍길동', provider: '올핸즈', writtenDate: '2026-11-16',
+    principalSignature: '회사 담당자', workerSignature: '홍길동',
+    fieldLabels: ['근로계약기간', '근무장소', '담당업무', '소정근로시간', '휴게시간', '임금 구성항목', '임금 계산방법', '임금 지급방법·지급일', '주휴일·휴일', '연차유급휴가'],
+    fields: ['2026-11-16 ~ 기간의 정함 없음', '화성 현장', '포장', '09:00~18:00', '12:00~13:00', '기본급 280만원', '월급제', '계좌이체·매월 10일', '일요일', '근로기준법에 따름']
+  };
+  const completeResult = validation.validateRequired(employment, { title: '근로계약서' });
+  assert.equal(completeResult.filter(item => item.level === 'error').length, 0);
+  const missingResult = validation.validateRequired({ ...employment, fields: ['', '', '', '', '', '', '', '', '', ''] }, { title: '근로계약서' });
+  assert.deepEqual(missingResult.filter(item => item.level === 'error').map(item => item.code), ['employment-period', 'workplace', 'duties', 'work-hours', 'wage', 'pay-day', 'holiday', 'annual-leave']);
+});
