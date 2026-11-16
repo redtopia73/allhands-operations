@@ -411,21 +411,6 @@ module.exports = async (req, res) => {
       }
       if (input.action === 'payslip-message-send') {
         const document = input.document && typeof input.document === 'object' ? input.document : {};
-        if (documentType === 'field-document') {
-          const previousRows = await db.query(
-            "SELECT id,data,updated_at FROM allhands_operation_documents WHERE document_type='field-document' AND owner_company_id IS NOT DISTINCT FROM $1 AND data->>'templateId'=$2 AND (data->>'managedSite'=$3 OR data->>'site'=$3) ORDER BY updated_at DESC LIMIT 1",
-            [ownerCompanyId, String(document.templateId || ''), String(document.managedSite || document.site || '')]
-          );
-          const previous = previousRows[0]?.data || null;
-          const required = documentValidation.validateRequired(document, { id: document.templateId, title: document.title });
-          const errors = required.filter(item => item.level === 'error');
-          if (document.status === 'complete' && errors.length) return res.status(400).json({ error: `작성 완료로 저장할 수 없습니다. 필수값·서명 누락 ${errors.length}개를 확인해 주세요.`, validation: required });
-          document.previousDocumentId = previousRows[0]?.id || null;
-          document.versionNumber = Number(previous?.versionNumber || 0) + 1;
-          document.changes = documentValidation.diff(previous, document);
-          document.validation = required;
-          document.reviewedAt = new Date().toISOString();
-        }
         const appId = Number(document.applicationId);
         if (!appId) return res.status(400).json({ error: '대상 인력을 확인해 주세요.' });
         const people = await db.query(
@@ -532,6 +517,21 @@ module.exports = async (req, res) => {
         if (documentType === 'worker-notice') {
           document.scope = admin ? 'all' : 'company';
           if (ownerCompanyId) document.companyId = ownerCompanyId;
+        }
+        if (documentType === 'field-document') {
+          const previousRows = await db.query(
+            "SELECT id,data,updated_at FROM allhands_operation_documents WHERE document_type='field-document' AND owner_company_id IS NOT DISTINCT FROM $1 AND data->>'templateId'=$2 AND (data->>'managedSite'=$3 OR data->>'site'=$3) AND ($4='' OR data->>'managedWorker'=$4) ORDER BY updated_at DESC LIMIT 1",
+            [ownerCompanyId, String(document.templateId || ''), String(document.managedSite || document.site || ''), String(document.managedWorker || '')]
+          );
+          const previous = previousRows[0]?.data || null;
+          const required = documentValidation.validateRequired(document, { id: document.templateId, title: document.title });
+          const errors = required.filter(item => item.level === 'error');
+          if (document.status === 'complete' && errors.length) return res.status(400).json({ error: `작성 완료로 저장할 수 없습니다. 필수값·서명 누락 ${errors.length}개를 확인해 주세요.`, validation: required });
+          document.previousDocumentId = previousRows[0]?.id || null;
+          document.versionNumber = Number(previous?.versionNumber || 0) + 1;
+          document.changes = documentValidation.diff(previous, document);
+          document.validation = required;
+          document.reviewedAt = new Date().toISOString();
         }
         const rows = await db.query(
           'INSERT INTO allhands_operation_documents (owner_company_id,document_type,data) VALUES ($1,$2,$3::jsonb) RETURNING id,updated_at',

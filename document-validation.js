@@ -23,15 +23,16 @@
   function validateRequired(document, template) {
     const results = [];
     const required = (value, code, message) => { if (!clean(value)) results.push(item('error', code, message)); };
+    const resignation = document.templateId === 'resignation-letter';
     required(document.provider, 'company', '회사 정보가 필요합니다.');
     required(document.managedSite || document.site, 'site', '관리 사업장을 선택해 주세요.');
     required(document.writtenDate, 'written-date', '작성일을 입력해 주세요.');
-    if (document.startDate || document.endDate || /계약|파견/.test(template?.title || '')) {
+    if (!resignation && (document.startDate || document.endDate || /계약|파견/.test(template?.title || ''))) {
       required(document.startDate, 'start-date', '계약 시작일을 입력해 주세요.');
       required(document.endDate, 'end-date', '계약 종료일을 입력해 주세요.');
       if (document.startDate && document.endDate && document.startDate > document.endDate) results.push(item('error', 'date-order', '계약 종료일은 시작일보다 빠를 수 없습니다.'));
     }
-    const workerRequired = ['conditions-notice', 'dispatch-ledger'].includes(document.templateId);
+    const workerRequired = ['conditions-notice', 'dispatch-ledger', 'resignation-letter'].includes(document.templateId);
     if (workerRequired) required(document.managedWorker, 'worker', '대상 근로자를 선택해 주세요.');
     const workHours = findLabel(document, /근로시간|근무시간|휴게시간/);
     const wage = findLabel(document, /임금|도급대가|파견대가|계약금액|정산 금액/);
@@ -41,9 +42,15 @@
       required(wage, 'wage', '임금 또는 계약금액을 입력해 주세요.');
       required(payDay, 'pay-day', '임금·대가 지급일 또는 지급조건을 입력해 주세요.');
     }
-    required(document.principalSignature, 'principal-signature', '갑(발주·사용사업주) 서명·확인이 필요합니다.');
-    required(document.providerSignature, 'provider-signature', '을(수급·파견사업주) 서명·확인이 필요합니다.');
-    if (workerRequired) required(document.workerSignature, 'worker-signature', '근로자 서명·확인이 필요합니다.');
+    if (resignation) {
+      required(findLabel(document, /퇴직 예정일|최종 근무일/), 'resignation-date', '최종 근무일 또는 퇴직 예정일을 입력해 주세요.');
+      required(findLabel(document, /사직 사유/), 'resignation-reason', '사직 사유를 입력해 주세요.');
+      required(document.workerSignature, 'worker-signature', '제출인 서명·확인이 필요합니다.');
+    } else {
+      required(document.principalSignature, 'principal-signature', '갑(발주·사용사업주) 서명·확인이 필요합니다.');
+      required(document.providerSignature, 'provider-signature', '을(수급·파견사업주) 서명·확인이 필요합니다.');
+      if (workerRequired) required(document.workerSignature, 'worker-signature', '근로자 서명·확인이 필요합니다.');
+    }
     if (!results.length) results.push(item('pass', 'required', '필수값과 서명·작성일을 확인했습니다.'));
     return results;
   }
