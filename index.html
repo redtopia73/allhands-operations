@@ -208,7 +208,7 @@
   </div>
   <header class="top"><div class="brand">all hands <em>운영관리</em></div><div class="user"><a class="job-home-link" href="https://allhands-job.vercel.app">올핸잡</a><a class="guide-link" href="guide.html">기능안내</a><span id="userText">기업·관리자 전용 · 올핸 JOB 연동</span></div></header>
   <section class="operations-global-hero"><div class="operations-hero-copy"><div class="eyebrow">ALLHANDS JOB</div><h1>올핸잡 현장운영 통합관리</h1><p>지원자 관리부터 현장 배치, 근태 확인과 급여 정산까지 운영 업무를 한곳에서 관리합니다.</p></div><div class="operations-hero-mark"><span>ALLHANDS JOB</span><strong>운영관리<br>시스템</strong></div></section>
-  <div class="layout"><aside><p class="small">OPERATIONS</p><nav id="sideNav"><button class="active" data-view="dashboard">대시보드</button><button data-view="applicants">지원관리</button><button data-view="people">배치현황</button><button data-view="clients">고객사 관리</button><button data-view="accounts" hidden>계정관리</button><button data-view="personnel">인력정보</button><button data-view="attendance">근태관리</button><button data-view="payroll">급여정산</button><div id="payrollSubnav" class="payroll-subnav" style="display:none"></div><button data-view="invoice">청구관리</button><button data-view="contracts">계약관리</button><div id="contractSubnav" class="contract-subnav" style="display:none"><button data-view="quote">견적서 작성</button><button data-view="contract">도급계약서 작성</button><button data-view="dispatch-contract">파견계약서 작성</button></div><button data-view="certificates">증명서 발급</button><button data-view="document-archive">문서보관함</button><button data-view="inquiry">시스템 문의</button></nav></aside>
+  <div class="layout"><aside><p class="small">OPERATIONS</p><nav id="sideNav"><button class="active" data-view="dashboard">대시보드</button><button data-view="applicants">지원관리</button><button data-view="people">배치현황</button><button data-view="clients">고객사 관리</button><button data-view="accounts" hidden>계정관리</button><button data-view="personnel">인력정보</button><button data-view="attendance">근태관리</button><button data-view="payroll">급여정산</button><div id="payrollSubnav" class="payroll-subnav" style="display:none"></div><button data-view="invoice">청구관리</button><button data-view="contracts">계약관리</button><div id="contractSubnav" class="contract-subnav" style="display:none"><button data-view="quote">견적서 작성</button><button data-view="contract">도급계약서 작성</button><button data-view="dispatch-contract">파견계약서 작성</button><button data-view="recruitment-contract">채용대행계약서 작성</button><button data-view="headhunting-contract">헤드헌팅계약서 작성</button></div><button data-view="certificates">증명서 발급</button><button data-view="document-archive">문서보관함</button><button data-view="inquiry">시스템 문의</button></nav></aside>
   <main id="app"><div class="loading">로그인 정보를 확인하고 있습니다.</div></main></div>
   <script>
     const $=s=>document.querySelector(s), won=n=>new Intl.NumberFormat('ko-KR').format(Math.round(Number(n)||0))+'원';
@@ -900,7 +900,7 @@
     window.resetOperationUserPassword=async accountId=>{const password=prompt('새 임시 비밀번호를 8자 이상 입력해 주세요.');if(password===null)return;try{await accountRequest({action:'operation-user-password',accountId,password});alert('임시 비밀번호를 변경했습니다. 담당자에게 안전하게 전달해 주세요.')}catch(error){alert(error.message)}};
     const applyAccountAccess=()=>{
       const user=window.currentOperationUser||{},accountRole=user.accountRole||'manager';
-      const fieldViews=new Set(['dashboard','applicants','vacancy-fill','people','clients','personnel','attendance','contracts','quote','contract','dispatch-contract','certificates','document-archive','field-documents','worker-notice','contract-request','approvals','inquiry','ai-operations']);
+      const fieldViews=new Set(['dashboard','applicants','vacancy-fill','people','clients','personnel','attendance','contracts','quote','contract','dispatch-contract','recruitment-contract','headhunting-contract','certificates','document-archive','field-documents','worker-notice','contract-request','approvals','inquiry','ai-operations']);
       const payrollViews=new Set(['dashboard','attendance','payroll','transfer-file','invoice','ledger','document-archive','inquiry','ai-operations']);
       document.querySelectorAll('#sideNav [data-view]').forEach(button=>{
         const target=button.dataset.view;if(target==='accounts'){button.hidden=!user.canManageAccounts;return}
@@ -1154,7 +1154,7 @@
     `;
     document.head.append(style);
 
-    const types={quote:'견적서',contract:'도급계약서','dispatch-contract':'파견계약서',invoice:'청구서',certificate:'증명서','field-document':'현장서류'};
+    const types={quote:'견적서',contract:'도급계약서','dispatch-contract':'파견계약서','recruitment-contract':'채용대행계약서','headhunting-contract':'헤드헌팅계약서',invoice:'청구서',certificate:'증명서','field-document':'현장서류'};
     const labels={quoteTitle:'견적서명',quoteClient:'거래처·현장',quoteFeeRate:'관리비율',qJob:'직무',qPeople:'인원',qBase:'기본급',qDuty:'업무수당',qOvertime:'시간외근로수당',qHoliday:'휴일근무수당',qMeal:'식대',qVehicle:'차량유지비',qOther:'기타경비',qOrdinary:'월 통상급여',qTaxable:'과세급여',qLegal:'법적부담금',qOtherTotal:'기타경비 소계',qDirect:'직접비 지급 총액',qFee:'Agency fee',qContract:'계약단가 총액',qGrand:'총액',invoiceMonth:'청구월',invoiceClient:'거래처',invoiceIssueDate:'발행일',invoicePaymentDate:'지급기한',invoiceSubtotal:'공급가액',invoiceVat:'부가세',invoiceGrandTotal:'청구 총액',certificateType:'증명서 종류',certificateName:'성명',certificateBirth:'생년월일',certificateClient:'근무지',certificateJob:'담당업무',certificateStart:'입사일',certificateEnd:'퇴사일',certificateDate:'발급일',certificateNumber:'문서번호',certificateCompany:'회사명',certificateRepresentative:'대표자',certificateAddress:'주소',certificateDetail:'용도'};
     const archiveDocs=()=> (window.operationDocuments||[]).filter(doc=>types[doc.document_type]);
     const docData=doc=>doc?.data&&typeof doc.data==='object'?doc.data:{};
@@ -1193,6 +1193,7 @@
     const archiveNavigation=window.setView;window.setView=next=>{if(next==='document-archive'){archiveNavigation('dashboard');setTimeout(window.renderDocumentArchive,0);return}archiveNavigation(next)};
   })();
   </script>
+  <script src="recruitment-contracts.js?v=20261117-contract-management"></script>
   <script src="field-documents.js?v=20261116-employment-contract"></script>
 </body>
 </html>
