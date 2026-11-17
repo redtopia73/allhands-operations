@@ -901,7 +901,7 @@
     const applyAccountAccess=()=>{
       const user=window.currentOperationUser||{},accountRole=user.accountRole||'manager';
       const fieldViews=new Set(['dashboard','applicants','vacancy-fill','people','clients','personnel','attendance','contracts','quote','contract','dispatch-contract','recruitment-contract','headhunting-contract','certificates','document-archive','field-documents','worker-notice','contract-request','approvals','inquiry','ai-operations']);
-      const payrollViews=new Set(['dashboard','attendance','payroll','payroll-calculation','retirement-pay','transfer-file','invoice','ledger','document-archive','inquiry','ai-operations']);
+      const payrollViews=new Set(['dashboard','attendance','payroll','payroll-calculation','retirement-pay','annual-leave-settlement','transfer-file','invoice','ledger','document-archive','inquiry','ai-operations']);
       document.querySelectorAll('#sideNav [data-view]').forEach(button=>{
         const target=button.dataset.view;if(target==='accounts'){button.hidden=!user.canManageAccounts;return}
         button.hidden=accountRole==='field'?!fieldViews.has(target):accountRole==='payroll'?!payrollViews.has(target):false;
@@ -1154,7 +1154,7 @@
     `;
     document.head.append(style);
 
-    const types={quote:'견적서',contract:'도급계약서','dispatch-contract':'파견계약서','recruitment-contract':'채용대행계약서','headhunting-contract':'헤드헌팅계약서','retirement-pay':'퇴직금 계산서',invoice:'청구서',certificate:'증명서','field-document':'현장서류'};
+    const types={quote:'견적서',contract:'도급계약서','dispatch-contract':'파견계약서','recruitment-contract':'채용대행계약서','headhunting-contract':'헤드헌팅계약서','retirement-pay':'퇴직금 계산서','annual-leave-settlement':'잔여연차정산서',invoice:'청구서',certificate:'증명서','field-document':'현장서류'};
     const labels={quoteTitle:'견적서명',quoteClient:'거래처·현장',quoteFeeRate:'관리비율',qJob:'직무',qPeople:'인원',qBase:'기본급',qDuty:'업무수당',qOvertime:'시간외근로수당',qHoliday:'휴일근무수당',qMeal:'식대',qVehicle:'차량유지비',qOther:'기타경비',qOrdinary:'월 통상급여',qTaxable:'과세급여',qLegal:'법적부담금',qOtherTotal:'기타경비 소계',qDirect:'직접비 지급 총액',qFee:'Agency fee',qContract:'계약단가 총액',qGrand:'총액',invoiceMonth:'청구월',invoiceClient:'거래처',invoiceIssueDate:'발행일',invoicePaymentDate:'지급기한',invoiceSubtotal:'공급가액',invoiceVat:'부가세',invoiceGrandTotal:'청구 총액',certificateType:'증명서 종류',certificateName:'성명',certificateBirth:'생년월일',certificateClient:'근무지',certificateJob:'담당업무',certificateStart:'입사일',certificateEnd:'퇴사일',certificateDate:'발급일',certificateNumber:'문서번호',certificateCompany:'회사명',certificateRepresentative:'대표자',certificateAddress:'주소',certificateDetail:'용도'};
     const archiveDocs=()=> (window.operationDocuments||[]).filter(doc=>types[doc.document_type]);
     const docData=doc=>doc?.data&&typeof doc.data==='object'?doc.data:{};
@@ -1195,6 +1195,8 @@
   </script>
   <script src="retirement-pay-calculator.js?v=20261117-statutory"></script>
   <script src="retirement-pay.js?v=20261117-statutory"></script>
+  <script src="annual-leave-calculator.js?v=20261117-settlement"></script>
+  <script src="annual-leave-settlement.js?v=20261117-settlement"></script>
   <script src="recruitment-contracts.js?v=20261117-contract-management"></script>
   <script src="field-documents.js?v=20261116-employment-contract"></script>
 </body>
