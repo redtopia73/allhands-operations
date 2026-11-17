@@ -25,3 +25,13 @@ test('유효한 사용촉진 확인 시 지급액을 0원으로 표시한다',()
   assert.equal(result.referenceCompensation,500000);
   assert.equal(result.compensation,0);
 });
+
+test('퇴사월 청구서에는 최신 퇴직금과 잔여연차정산만 반영한다',()=>{
+  const documents=[
+    {id:1,document_type:'retirement-pay',data:{applicationId:7,retirementPay:1000000}},
+    {id:3,document_type:'retirement-pay',data:{applicationId:7,retirementPay:1200000}},
+    {id:4,document_type:'annual-leave-settlement',data:{applicationId:7,compensation:450000}}
+  ];
+  assert.deepEqual(calculator.invoiceCharges(documents,{id:7,resignationDate:'2026-11-17'},'2026-11'),{retirement:1200000,leave:450000});
+  assert.deepEqual(calculator.invoiceCharges(documents,{id:7,resignationDate:'2026-11-17'},'2026-10'),{retirement:0,leave:0});
+});

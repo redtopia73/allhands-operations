@@ -57,11 +57,8 @@
     window.calculateAnnualLeaveSettlement();
   }
 
-  function latestSettlement(type,applicationId){return (window.operationDocuments||[]).filter(doc=>doc.document_type===type&&String(parse(doc.data).applicationId)===String(applicationId)).sort((a,b)=>Number(b.id||0)-Number(a.id||0))[0]}
   function settlementFor(person,month){
-    const op=workerOperation(person);if(!String(op.resignationDate||'').startsWith(month))return {retirement:0,leave:0};
-    const retirement=parse(latestSettlement('retirement-pay',person.id)?.data),leave=parse(latestSettlement('annual-leave-settlement',person.id)?.data);
-    return {retirement:Number(retirement.retirementPay)||0,leave:Number(leave.compensation)||0};
+    return calc.invoiceCharges(window.operationDocuments||[],{id:person.id,resignationDate:workerOperation(person).resignationDate},month);
   }
   function prepareInvoiceClient(month){
     const select=document.getElementById('invoiceClient'),body=document.getElementById('invoiceRows');if(!select)return '';

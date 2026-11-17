@@ -27,5 +27,11 @@
     const usePromotion=String(input.usePromotion||'')==='true'||input.usePromotion===true||input.usePromotion==='on';
     return {grantedDays:granted,usedDays:used,derivedRemaining,remainingDays,hourlyOrdinaryWage,dailyHours,dailyOrdinaryWage,referenceCompensation,usePromotion,compensation:usePromotion?0:referenceCompensation};
   }
-  return {leaveUnits,countUsed,calculate};
+  const dataOf=doc=>{if(doc?.data&&typeof doc.data==='object')return doc.data;try{return JSON.parse(doc?.data||'{}')}catch{return {}}};
+  function invoiceCharges(documents,person,month){
+    if(!String(person?.resignationDate||'').startsWith(String(month||'')))return {retirement:0,leave:0};
+    const latest=type=>(documents||[]).filter(doc=>doc?.document_type===type&&String(dataOf(doc).applicationId)===String(person?.id)).sort((a,b)=>Number(b.id||0)-Number(a.id||0))[0];
+    return {retirement:number(dataOf(latest('retirement-pay')).retirementPay),leave:number(dataOf(latest('annual-leave-settlement')).compensation)};
+  }
+  return {leaveUnits,countUsed,calculate,invoiceCharges};
 });
