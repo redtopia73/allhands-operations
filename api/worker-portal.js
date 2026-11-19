@@ -50,7 +50,6 @@ module.exports = async (req, res) => {
       const notices = await db.query("SELECT id,data,created_at FROM allhands_operation_documents WHERE document_type='worker-notice' ORDER BY created_at DESC LIMIT 100");
       const requests = await db.query("SELECT id,data,created_at FROM allhands_operation_documents WHERE document_type IN ('worker-certificate-request','worker-attendance-request') AND data->>'workerId'=$1 ORDER BY created_at DESC LIMIT 100", [String(worker.id)]);
       const contracts = await db.query("SELECT id,data,created_at FROM allhands_operation_documents WHERE document_type='employment-contract' AND data->>'workerId'=$1 ORDER BY created_at DESC LIMIT 30", [String(worker.id)]);
-      const probationEvaluations = await db.query("SELECT id,data,created_at FROM allhands_operation_documents WHERE document_type='probation-self-evaluation' AND data->>'workerId'=$1 ORDER BY created_at DESC LIMIT 30", [String(worker.id)]);
       const applicationIds = rows.map(row => String(row.id));
       const deliveries = applicationIds.length
         ? await db.query("SELECT id,data,created_at FROM allhands_operation_documents WHERE document_type='payslip-delivery' AND data->>'applicationId'=ANY($1::text[]) ORDER BY created_at DESC LIMIT 100", [applicationIds])
@@ -68,7 +67,6 @@ module.exports = async (req, res) => {
         notices: notices.filter(item => item.data?.scope === 'all' || companyIds.has(String(item.data?.companyId || ''))).map(item => ({ id: item.id, ...item.data, createdAt: item.created_at })),
         requests: requests.map(item => ({ id: item.id, ...item.data, createdAt: item.created_at })),
         contracts: contracts.map(item => ({ id: item.id, ...item.data, createdAt: item.created_at })),
-        probationEvaluations: probationEvaluations.map(item => ({ id: item.id, ...item.data, createdAt: item.created_at })),
         companyReviews: reviews.map(item => ({ companyId: String(item.company_id), scores: item.scores || {}, comment: item.comment || '', status: item.status, updatedAt: item.updated_at })),
         payslips: deliveries.map(item => ({ id: item.id, ...item.data, createdAt: item.created_at })),
         payslipMessages: payslipMessages.map(item => ({ id: item.id, subject: item.subject, body: item.body, createdAt: item.created_at }))
@@ -83,30 +81,6 @@ module.exports = async (req, res) => {
     const target = rows.find(row => String(row.id) === String(applicationId));
     if (!target) return res.status(404).json({ error: '배치된 근무 정보를 찾지 못했습니다.' });
     const previous = target.employer_note || {};
-
-    if (input.action === 'probation-self-evaluation') {
-      const keys = ['workAttitude','jobPerformance','collaboration','ruleCompliance'];
-      const responses = {};
-      for (const key of keys) {
-        const value = clean(input.responses?.[key]).slice(0, 2000);
-        if (!value) return res.status(400).json({ error: '자기평가 항목을 모두 작성해 주세요.' });
-        responses[key] = value;
-      }
-      const overallComment = clean(input.overallComment).slice(0, 3000);
-      if (!overallComment) return res.status(400).json({ error: '본인 종합의견을 작성해 주세요.' });
-      const ownerId = clean(target.job_data?.ownerCompanyId);
-      if (!ownerId) return res.status(400).json({ error: '배치 업체 정보를 확인하지 못했습니다.' });
-      const document = {
-        applicationId: String(target.id), workerId: String(worker.id),
-        workerName: clean(target.worker_data?.name || '개인회원').slice(0, 120),
-        jobTitle: clean(target.job_title).slice(0, 200),
-        responses, overallComment, submittedAt: new Date().toISOString()
-      };
-      const existing = await db.query("SELECT id FROM allhands_operation_documents WHERE document_type='probation-self-evaluation' AND owner_company_id=$1 AND data->>'applicationId'=$2 AND data->>'workerId'=$3 ORDER BY id DESC LIMIT 1", [ownerId, String(target.id), String(worker.id)]);
-      if (existing[0]) await db.query('UPDATE allhands_operation_documents SET data=$1::jsonb,updated_at=NOW() WHERE id=$2', [JSON.stringify(document), existing[0].id]);
-      else await db.query("INSERT INTO allhands_operation_documents (owner_company_id,document_type,data) VALUES ($1,'probation-self-evaluation',$2::jsonb)", [ownerId, JSON.stringify(document)]);
-      return res.status(200).json({ ok: true, message: '수습 자기평가를 저장했고 평가자에게 전달했습니다.' });
-    }
 
     if (input.action === 'company-review') {
       const companyId = Number(target.job_data?.ownerCompanyId);
