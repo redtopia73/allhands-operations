@@ -14,6 +14,8 @@
   <script src="attendance-approval-enhancements.js" defer></script>
   <script src="payroll-payslip-enhancements.js" defer></script>
   <script src="operations-navigation-recovery.js" defer></script>
+  <script src="probation-evaluation-calculator.js" defer></script>
+  <script src="probation-evaluation.js" defer></script>
   <style>body,body *{font-family:"IBM Plex Sans KR",sans-serif!important}</style>
   <style>
     :root{--ops-navy:#172852;--ops-blue:#315bb5;--ops-coral:#ff6b5e;--ops-mint:#1a9b8b;--ops-line:#dfe6f1;--ops-shadow:0 12px 32px rgba(32,57,104,.08)}
@@ -900,7 +902,7 @@
     window.resetOperationUserPassword=async accountId=>{const password=prompt('새 임시 비밀번호를 8자 이상 입력해 주세요.');if(password===null)return;try{await accountRequest({action:'operation-user-password',accountId,password});alert('임시 비밀번호를 변경했습니다. 담당자에게 안전하게 전달해 주세요.')}catch(error){alert(error.message)}};
     const applyAccountAccess=()=>{
       const user=window.currentOperationUser||{},accountRole=user.accountRole||'manager';
-      const fieldViews=new Set(['dashboard','applicants','vacancy-fill','people','clients','personnel','attendance','contracts','quote','contract','dispatch-contract','recruitment-contract','headhunting-contract','certificates','document-archive','field-documents','worker-notice','contract-request','approvals','inquiry','ai-operations']);
+      const fieldViews=new Set(['dashboard','applicants','vacancy-fill','people','clients','personnel','attendance','contracts','quote','contract','dispatch-contract','recruitment-contract','headhunting-contract','certificates','document-archive','field-documents','worker-notice','contract-request','approvals','inquiry','ai-operations','probation-evaluation']);
       const payrollViews=new Set(['dashboard','attendance','payroll','payroll-calculation','retirement-pay','annual-leave-settlement','transfer-file','invoice','ledger','document-archive','inquiry','ai-operations']);
       document.querySelectorAll('#sideNav [data-view]').forEach(button=>{
         const target=button.dataset.view;if(target==='accounts'){button.hidden=!user.canManageAccounts;return}
