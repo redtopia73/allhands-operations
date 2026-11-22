@@ -1,5 +1,6 @@
 {
   "cleanUrls": true,
+  "rewrites": [{ "source": "/education", "destination": "/demo/ld" }],
   "headers": [
     {
       "source": "/operations-sw.js",
