@@ -1,0 +1,954 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#102749"><title>all hands | L&D</title><style>:root{--nav:#102642;--ink:#172b43;--blue:#265cad;--muted:#576b80;--line:#dce3eb;--bg:#f3f6fa;--green:#137661;--amber:#9c5d0b;color:var(--ink);font:16px/1.5 "Noto Sans KR","Malgun Gothic",sans-serif}*{box-sizing:border-box}body{margin:0;background:var(--bg)}button,input,select,textarea{font:inherit}button,select{cursor:pointer}button,a{touch-action:manipulation}button{color:inherit}button{border:1px solid var(--line);background:white;padding:8px 13px;border-radius:7px;font-size:.875rem;font-weight:650}button:hover{filter:brightness(.96)}button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:3px solid #5a9ce7;outline-offset:2px}#shell{display:flex;min-height:100vh}aside{width:229px;flex:none;background:var(--nav);color:#fff;display:flex;flex-direction:column;position:sticky;top:0;height:100vh;z-index:3} .identity{display:flex;align-items:center;gap:12px;padding:29px 18px 25px;border-bottom:1px solid #ffffff1e}.identity strong{font-size:1.27rem;letter-spacing:-.06em;white-space:nowrap}.identity em{font-style:normal;color:#8ba7ca;font-weight:400;margin:0 1px}.identity small,.sidefoot small{display:block;color:#afc0d5;font-size:.75rem;margin-top:1px}.logo{width:34px;height:36px;display:grid;align-content:center;transform:skewY(-13deg);gap:3px}.logo i{height:6px;border-radius:1px;background:#80baff;display:block;transform:skewX(-20deg)}.logo i:nth-child(2){width:80%;background:#bedbff}.logo i:last-child{width:58%;background:white}nav{overflow-y:auto;flex:1;padding:12px}nav h3{font-size:.75rem;letter-spacing:.045em;font-weight:600;color:#94adc9;margin:21px 12px 6px}nav button{border:0;width:100%;display:flex;align-items:center;gap:12px;background:none;color:#d9e4f1;font-weight:500;text-align:left;padding:8px 12px;border-radius:6px;min-height:35px}nav button:hover{background:#203953}nav button.active{background:#315d99;color:#fff;font-weight:700}svg{width:18px;height:18px;vertical-align:middle;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;flex:none}.sidefoot{margin:8px 16px 0;padding:17px 2px;display:flex;gap:11px;align-items:center;border-top:1px solid #ffffff21;font-size:.875rem}.avatar{background:#254565;color:#cce0f9;padding:9px;border-radius:10px;font-weight:750}.workspace{flex:1;min-width:0}header{height:58px;background:#fff;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:13px;padding:0 clamp(18px,2.6vw,46px);font-size:.875rem;color:var(--muted)}header b{color:var(--ink)}.header-right{margin-left:auto;font-size:.8125rem}.header-right i{display:inline-block;background:#24816d;width:7px;height:7px;border-radius:50%;margin-right:5px}.slash{color:#b7c2cf}main{padding:29px clamp(16px,2.6vw,46px) 50px;max-width:1750px;margin:auto}.heading,.panelhead,.actions,.khead,.modalhead,.modalfoot,.legend,.filters{display:flex;align-items:center;gap:10px}.heading,.panelhead,.khead,.modalhead{justify-content:space-between}.heading{margin-bottom:22px}h1,h2,h3,p{margin:0}h1{font-size:clamp(1.55rem,2.4vw,2.15rem);line-height:1.25;letter-spacing:-.06em}h2{font-size:1.12rem;letter-spacing:-.045em}p.sub{color:var(--muted);font-size:.9rem;margin-top:6px}button.primary{background:#22528e;color:white;border-color:#22528e}select,input,textarea{border:1px solid #cdd8e3;background:#fff;border-radius:7px;padding:8px 10px;color:var(--ink);min-width:0}select{font-size:.875rem}input,textarea{font-size:1rem}.kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:13px;margin-bottom:18px}.card,.panel{background:#fff;border:1px solid var(--line);border-radius:11px;box-shadow:0 2px 5px #142b4510}.card{padding:17px 19px}.khead{font-size:.875rem;color:var(--muted);font-weight:650}.kicon{width:30px;height:30px;border-radius:8px;display:grid;place-items:center;background:#e8eff9;color:#4270ad}.kicon.mint{background:#e4f4ed;color:#21816a}.kicon.gold{background:#fff1d8;color:#9d6c23}.kicon.lav{background:#eee9f8;color:#7662a3}.big{font-size:2rem;line-height:1.25;font-weight:750;font-variant-numeric:tabular-nums;letter-spacing:-.05em}.big small{font-weight:500;font-size:.95rem;margin-left:4px;color:#596c80}.hint{font-size:.8125rem;color:var(--muted);margin-top:5px}.panel{margin-bottom:18px;overflow:hidden}.panelhead{padding:17px 20px;border-bottom:1px solid var(--line);flex-wrap:wrap}.panelhead .sub{margin-top:2px;font-size:.8125rem}.legend{gap:12px;color:var(--muted);font-size:.8125rem}.key{display:inline-flex;align-items:center;gap:5px}.dot{width:8px;height:8px;border-radius:3px;display:inline-block}.done{background:#c6eade;color:#176c54}.live{background:#a5c9ff;color:#1b4e94}.plan{background:#e3e9f0;color:#596c80}.late{background:#ffe1bd;color:#8f5211}.scroll{overflow:auto}table{width:100%;border-collapse:collapse;font-size:.875rem;text-align:left;white-space:nowrap}th{color:#516379;background:#f7f9fc;font-weight:620;font-size:.8125rem}th,td{padding:12px 15px;border-bottom:1px solid #e9edf2}tr:last-child td{border-bottom:0}.calendar td,.calendar th{text-align:center;border-right:1px solid #edf0f5;padding:8px 3px;min-width:34px}.calendar .course{text-align:left;padding:9px 15px;min-width:198px;position:sticky;left:0;background:white;z-index:1;font-weight:600}.calendar thead .course{background:#f7f9fc}.calendar td.current,.calendar th.current{background:#f0f5fd}.calendar .mark{min-width:24px;max-width:95%;width:72%;height:19px;padding:0;border:0;border-radius:4px;font-size:.75rem;vertical-align:middle}.calendar tbody tr:hover .course{color:var(--blue)}.bottom{display:grid;grid-template-columns:1.4fr 1fr;gap:16px}.list{padding:1px 18px}.listrow{display:flex;align-items:center;gap:12px;border:0;background:none;border-bottom:1px solid var(--line);width:100%;text-align:left;border-radius:0;padding:13px 0}.listrow:last-child{border:0}.datebox{width:44px;border:1px solid var(--line);border-radius:6px;text-align:center;overflow:hidden;flex:none;line-height:1.1;padding-bottom:5px;color:#254d7c}.datebox small{display:block;background:#eaf0f8;padding:4px;font-size:.75rem}.datebox b{display:block;font-size:1.1rem;padding-top:3px}.listrow strong{display:block;font-size:.92rem}.listrow small.meta{display:block;color:var(--muted);font-weight:400;margin-top:3px}.tag{font-size:.75rem;font-weight:600;border-radius:5px;padding:3px 7px;display:inline-block}.listrow .tag{margin-left:auto}.quiet,.linkbtn{background:none;color:var(--blue);border:none;padding:4px 0}.filters{padding:14px 18px;flex-wrap:wrap;border-bottom:1px solid var(--line)}.filters input{width:min(100%,280px);font-size:.875rem}.empty{text-align:center;color:var(--muted);padding:27px;white-space:normal}.fields{padding:19px 22px;display:grid;grid-template-columns:1fr 1fr;gap:15px}.fields label{display:grid;gap:5px;align-content:start;font-size:.875rem;font-weight:600}.wide{grid-column:1/-1}.fields textarea{min-height:70px;resize:vertical}.modalhead,.modalfoot{padding:16px 22px;border-bottom:1px solid var(--line)}.modalfoot{justify-content:flex-end;border-top:1px solid var(--line);border-bottom:0}.modalhead button{font-size:1.5rem;line-height:1;border:0}.modalhead{background:#f7f9fc}dialog{width:min(590px,calc(100vw - 20px));padding:0;border:0;border-radius:12px;color:var(--ink);max-height:89vh}dialog::backdrop{background:#0a203e66}#toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#142f4b;color:#fff;border-radius:8px;padding:9px 18px;font-size:.875rem;opacity:0;pointer-events:none;z-index:6}#toast.show{opacity:1}#menubtn,.skip{display:none}.skip:focus{display:block;position:fixed;z-index:10;background:white;padding:8px}.meter{height:6px;background:#e5eaf0;border-radius:5px;margin-top:7px;width:90px}.meter i{display:block;background:#4080c0;height:100%;border-radius:5px}.note{padding:14px 18px;font-size:.875rem;color:var(--muted)}@media(max-width:1150px){aside{width:206px}.card{padding:14px}.calendar .course{min-width:175px}.calendar td,.calendar th{min-width:31px}.bottom{grid-template-columns:1.1fr 1fr}}@media(max-width:900px){aside{display:none;position:fixed;height:calc(100dvh - 55px);top:55px;width:230px;box-shadow:4px 6px 20px #142b4540}aside.open{display:flex}#menubtn{display:block}header{height:55px}.header-right{display:none}.kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.bottom{grid-template-columns:1fr}.heading{align-items:flex-start;flex-wrap:wrap}.calendar{min-width:720px}}@media(max-width:520px){.card{padding:11px}.kpis{gap:8px}.heading{gap:14px}.fields{grid-template-columns:1fr}.panelhead{padding:14px}.actions{flex-wrap:wrap}.big{font-size:1.7rem}.khead{font-size:.8125rem}main{padding-top:20px}}
+.identity{display:block;padding:12px 13px 10px;border:0}.ld-brand{background:transparent;border:0;min-height:79px;display:grid;place-items:center}.ld-brand svg{width:134px;height:auto;max-width:100%;display:block}.identity small{margin:13px 0 0;text-align:center;font-size:13px}.ld-mobile-brand{display:none}@media(max-width:900px){header{background:var(--nav);color:#d9e4f1}header b{color:#fff}header .ld-mobile-brand{display:block;flex:none}header .ld-mobile-brand svg{display:block;width:66px;height:auto}header #homeicon{display:none}}@media(max-width:520px){header .ld-mobile-brand~span:not(.slash):not(.header-right){display:none}header .ld-mobile-brand~.slash{display:none}}.fm-panel{padding:18px}.fm-panel h2{text-align:center;margin:0 0 18px;font-size:21px}
+.fm-scroll{overflow-x:auto}.fm-scroll:focus-visible{outline:2px solid #265cad;outline-offset:-2px}
+.fm-chart{display:grid;min-width:900px;grid-template-columns:42px 92px repeat(21,minmax(0,1fr));grid-template-rows:32px 32px 60px 55px repeat(4,72px);border-top:1px solid #b8c4ce;border-left:1px solid #b8c4ce;color:#1c2938;background:white}
+.fm-cell{display:grid;place-content:center;text-align:center;line-height:1.35;font-size:14px}
+.fm-head,.fm-role,.fm-gridline{border-right:1px solid #c2ccd5;border-bottom:1px solid #c2ccd5}
+.fm-head{background:#d8e0e8;font-weight:700}.fm-sub{background:#e5eaf0}.fm-role{background:#f1f4f7;font-weight:650}
+.fm-gridline{pointer-events:none}.fm-divider{border-right:1px solid #c2ccd5;pointer-events:none}
+.fm-lane{position:relative;min-width:0;pointer-events:none}.fm-bar{position:absolute;left:8%;width:84%;display:flex;align-items:center;justify-content:center;writing-mode:vertical-rl;text-orientation:upright;border-radius:3px;font-size:13px;line-height:1.17;font-weight:650;letter-spacing:-.035em;white-space:nowrap;pointer-events:auto}
+.fm-core{background:#e78a36;color:#202c37}.fm-lead{background:#fffaf1;border:1px dashed #c8934f}.fm-global{background:#c7d2dd}.fm-job{background:#ffe49d}.fm-required{background:#f6c1b8}
+.fm-note{color:#465e76;font-size:14px;margin:12px 0}.fm-list{border-top:1px solid #e1e6ed;padding-top:10px}.fm-list summary{cursor:pointer;font-weight:650;color:#324d6e}.fm-list table{width:100%;min-width:0;margin-top:10px;table-layout:fixed}.fm-list th:first-child{width:28%}.fm-list td{white-space:normal;overflow-wrap:anywhere}
+@media(max-width:600px){.fm-panel{padding:12px}.fm-panel h2{font-size:18px}}
+.ld-brand svg,.ld-mobile-brand svg{stroke:none}@media(min-width:1200px){.education-indicators{grid-template-columns:repeat(5,minmax(0,1fr))}}
+
+#sidebar{width:240px;background:#152a3e;color:#e5edf5}
+#sidebar .identity{height:142px;flex:none;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:0}
+#sidebar .ld-brand{height:72px;min-height:0}
+#sidebar .ld-brand svg{max-height:72px}
+#sidebar .identity small{margin:0;color:#b6c7d7;font-size:13px;line-height:18px;font-weight:600}
+#nav{display:flex;flex-direction:column;gap:3px;padding:0 14px 16px}
+#nav h3{color:#b6c7d7;margin:15px 12px 5px;font-size:12px}
+#nav button{position:relative;justify-content:center;flex:none;min-height:39px;padding:8px 34px;border-radius:8px;color:#cbd9e5;text-align:center;font-size:15px;font-weight:700;line-height:1.5}
+#nav button svg{position:absolute;left:12px}
+#nav button:hover{background:#213e52;color:white;filter:none}
+#nav button.active{background:#e2f4f3;color:#005c66}
+#nav button:focus-visible{outline:2px solid #78d9dc;outline-offset:2px}
+#nav-shade{display:none}
+@media(max-width:900px){#sidebar{max-width:calc(100vw - 32px);z-index:32}header{background:#152a3e}#menubtn{display:grid;place-items:center;padding:0;width:38px;height:38px;background:transparent;color:white;border:0;font-size:23px}#sidebar.open+#nav-shade{display:block;position:fixed;inset:55px 0 0;background:#0f223755;z-index:31}}
+.ld-picker{display:inline-flex;align-items:center;gap:10px;font-size:14px;font-weight:650}.ld-picker select{max-width:66vw}.ld-context{padding:10px 18px;color:#405771;font-weight:650}.fields label[hidden]{display:none}
+#body .panel+.panel{margin-top:16px}#body>.filters{flex-wrap:wrap}
+#body .track-options{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,220px),1fr));gap:14px;padding:0 18px 18px}.track-options>div{border:1px solid var(--line);border-radius:8px;padding:16px}.track-options p{margin:8px 0 12px;color:var(--muted);font-size:14px}
+header:has(#demoLearner) .header-right{display:block}header .ld-picker{font-size:12px;gap:4px}header .ld-picker select{padding:4px;width:auto;font-size:13px}
+@media(max-width:600px){header:has(#demoLearner){gap:6px;padding:0 8px}header:has(#demoLearner) .ld-mobile-brand{display:none}header:has(#demoLearner) .header-right{white-space:nowrap}}
+.budget-cards{padding:0 16px 16px;display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,185px),1fr));gap:12px}.budget-cards .big{font-size:clamp(18px,2vw,28px)}.budget-cards .card{box-shadow:none}
+.db-overview{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;margin-bottom:16px}
+.db-panel{background:#fff;border:1px solid #dce3eb;border-radius:12px;padding:20px 22px;min-width:0;box-shadow:0 2px 6px #142b4509}
+.db-overview>.db-panel{display:flex;flex-direction:column}
+.db-panel h2{font-size:18px;line-height:1.45;letter-spacing:-.04em}
+.db-title,.db-rate>div:first-child,.db-foot,.db-lead{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.db-lead{justify-content:flex-start;gap:24px;margin:16px 0 2px}
+.db-ring{width:108px;aspect-ratio:1;flex:none;border-radius:50%;display:grid;place-items:center;background:conic-gradient(#19877d var(--pct),#e4f0ed 0)}
+.db-ring>div{width:80%;height:80%;border-radius:50%;background:white;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.db-ring strong,.db-count strong,.db-spend strong,.db-foot strong{font-variant-numeric:tabular-nums;line-height:1.15;letter-spacing:-.04em}
+.db-ring strong{font-size:29px;color:#156a65}.db-ring span{font-size:11px;font-weight:650;color:#486360}
+.db-panel em{font-size:.52em;font-style:normal;margin-left:3px}.db-panel small{display:block;color:#53697a;font-size:12px}
+.db-count,.db-spend{display:grid;gap:4px}.db-count>span,.db-spend>span{color:#53697a;font-size:13px;font-weight:650}
+.db-count strong,.db-spend strong{font-size:clamp(25px,2.6vw,36px)}.db-spend{margin:18px 0 5px}
+.db-rate,.db-distribution{padding:13px 0 0;font-size:14px}.db-rate>div>b,.db-distribution>b{font-size:14px}
+.db-track,.db-split{background:#e9eef2;height:8px;border-radius:8px;overflow:hidden;margin:6px 0}.db-track i,.db-split i{display:block;height:100%}.db-split{display:flex}
+.db-foot{border-top:1px solid #e5eaed;margin-top:auto;padding-top:14px;font-size:14px}.db-overview .db-rate:last-of-type,.db-distribution{margin-bottom:12px}
+.db-education .db-foot{margin-top:14px}.db-foot strong{font-size:21px;white-space:nowrap}
+.db-calendar{margin-bottom:16px}.db-chartkey{display:flex;align-items:center;gap:8px 16px;flex-wrap:wrap;color:#47606e;font-size:12px;margin:8px 0}
+.db-chartkey span{display:inline-flex;align-items:center;gap:5px}.db-chartkey i{width:9px;height:9px;background:#19877d;border-radius:2px}.db-chartkey>span:nth-child(2)>i{background:#b5d7d3}
+.db-bars{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:3px}
+.db-month{padding:0;border:0;background:transparent;min-width:0;text-align:center;border-radius:4px;font-size:12px;color:#526b79}
+.db-month:hover,.db-month:focus-visible{background:#edf5f3;filter:none}.db-plot{height:127px;padding-top:22px;display:flex;align-items:flex-end;justify-content:center;border-bottom:1px solid #cbdadf}
+.db-stack{position:relative;width:54%;max-width:36px;display:flex;align-items:flex-end;background:#b5d7d3;border-radius:3px 3px 0 0}.db-stack b{position:absolute;bottom:100%;left:50%;transform:translateX(-50%);color:#264651;font-size:12px}.db-stack i{background:#19877d;width:100%;border-radius:inherit}.db-month>span:last-child{display:block;margin-top:5px}
+@media(max-width:1050px) and (min-width:901px),(max-width:720px){.db-overview{grid-template-columns:1fr}.db-panel{padding:17px}.db-foot{margin-top:14px}}
+@media(max-width:460px){.db-bars{grid-template-columns:repeat(6,minmax(0,1fr));row-gap:9px}.db-plot{height:84px}.db-lead{gap:16px}.db-calendar .db-title{align-items:flex-start}}
+
+.ld-budget-total,.ld-budget-months{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));margin-bottom:18px}.ld-budget-total>div{background:white;border:1px solid #dce5e9;border-radius:10px;padding:16px}.ld-budget-total strong{display:block;margin-top:8px;font-size:20px;color:#285968}.ld-budget-months{padding:16px}.ld-budget-months>div{display:grid;gap:5px}.ld-budget-months progress{width:100%;height:8px;accent-color:#285968}.ld-budget-months b{font-size:14px}</style></head>
+<body><a href="#main" class="skip">본문 바로가기</a><div id="shell"><aside id="sidebar"><div class="identity"><div class="ld-brand"><svg xmlns="http://www.w3.org/2000/svg" width="168" height="97" viewBox="85 4 156 90" role="img" aria-label="all hands L&amp;D">
+
+<defs><path id="ld-side-amp" d="M1307 713 1625 642Q1600 554 1577.0 501.0Q1554 448 1512 376L1665 271Q1693 253 1737 228L1518 -24Q1458 8 1393.5 50.0Q1329 92 1278 122Q1172 52 1066 20Q919 -24 732 -24Q439 -24 296.0 98.0Q153 220 153 394Q153 519 237.0 630.5Q321 742 512 819Q432 916 402.0 987.5Q372 1059 372 1133Q372 1289 491.0 1390.0Q610 1491 852 1491Q1099 1491 1215.0 1395.0Q1331 1299 1331 1165Q1331 1090 1295.5 1021.0Q1260 952 1210.0 909.0Q1160 866 1031 781Q1138 674 1254 582Q1285 644 1307 713ZM839 970Q918 1013 961.0 1063.5Q1004 1114 1004 1159Q1004 1206 968.0 1238.5Q932 1271 869 1271Q807 1271 768.0 1235.0Q729 1199 729 1150Q729 1088 839 970ZM694 614Q610 555 582.5 513.0Q555 471 555 424Q555 351 618.0 294.0Q681 237 782 237Q891 237 1027 322Q897 422 694 614Z"/><mask id="ld-side-space" maskUnits="userSpaceOnUse" x="75" y="0" width="180" height="110"><rect x="75" y="0" width="180" height="110" fill="white"/><use href="#ld-side-amp" transform="translate(183 93) scale(.75) translate(-183 -93) matrix(0.03141025 0 0 -0.02772278 128.817308 92.334653)" fill="black" stroke="black" stroke-width="218" stroke-linejoin="round"/></mask></defs><g fill="#FFFFFF" transform="translate(1.333333 0)"><g mask="url(#ld-side-space)">
+<path fill="#FFFFFF" transform="translate(51 0)" d="M55 30H71V78H96L99 81V90L96 93H55Z"/>
+<g transform="translate(51 0)"><path fill="#FFB843" d="M55 30H71V48H55Z"/><path fill="#E8CA98" d="M55 30L71 48H55Z"/></g>
+<path transform="translate(174 93) scale(.666666667) translate(-174 -93)" fill="#FFFFFF" fill-rule="evenodd" d="M176 30H201C223 30 239 42 239 61.5S223 93 201 93H176Q174 93 174 91V32Q174 30 176 30Z M192 45L222 61.5L192 78Z"/>
+</g><use href="#ld-side-amp" transform="translate(183 93) scale(.75) translate(-183 -93) matrix(0.03141025 0 0 -0.02772278 128.817308 92.334653)" fill="white"/>
+<g fill-rule="evenodd" transform="translate(146.093333 34) scale(.13) translate(-1269 -165)">
+      <path d="M1300 191Q1315 191 1323 201V193H1341V260H1323V252
+      Q1315 262 1300 262C1282 262 1269 247 1269 227S1282 191 1300 191Z
+      M1306 207C1295 207 1288 215 1288 227S1295 246 1306 246
+      C1316 246 1323 238 1323 227S1316 207 1306 207Z"/>
+    <path d="M1353 165H1372V260H1353ZM1386 165H1405V260H1386Z"/>
+    <path d="M1445 165H1464V201Q1473 191 1487 191C1502 191 1510 201 1510 216
+      V260H1491V221C1491 211 1487 207 1479 207C1470 207 1464 213 1464 222V260H1445Z"/>
+    <path d="M1550 191Q1565 191 1573 201V193H1591V260H1573V252
+      Q1565 262 1550 262C1532 262 1519 247 1519 227S1532 191 1550 191Z
+      M1556 207C1545 207 1538 215 1538 227S1545 246 1556 246
+      C1566 246 1573 238 1573 227S1566 207 1556 207Z"/>
+    <path d="M1603 193H1621V202Q1630 191 1644 191C1660 191 1668 201 1668 217
+      V260H1649V222C1649 212 1645 207 1637 207C1628 207 1622 213 1622 222V260H1603Z"/>
+    <path d="M1707 191Q1721 191 1729 201V165H1748V260H1729V252
+      Q1721 262 1707 262C1689 262 1676 247 1676 227S1689 191 1707 191Z
+      M1713 207C1702 207 1695 215 1695 227S1702 246 1713 246
+      C1723 246 1730 238 1730 227S1723 207 1713 207Z"/>
+    <path d="M1789 191C1801 191 1811 197 1816 206L1802 215Q1797 206 1788 206
+      C1782 206 1779 209 1779 212C1779 216 1783 217 1793 220
+      C1808 224 1817 230 1817 241C1817 254 1805 262 1789 262
+      C1774 262 1762 255 1757 244L1772 235Q1777 247 1789 247
+      C1796 247 1800 244 1800 241C1800 237 1796 235 1785 233
+      C1769 229 1762 223 1762 213C1762 201 1773 191 1789 191Z"/>
+    </g></g></svg></div><small>all hands | 교육관리</small></div><nav id="nav" aria-label="주 메뉴"></nav><div class="sidefoot"><span class="avatar">HR</span><div><b>교육운영팀</b><small>가상 데이터 체험판</small></div></div></aside><div id="nav-shade"></div><div class="workspace"><header><button id="menubtn" aria-label="메뉴" aria-controls="sidebar" aria-expanded="false">☰</button><span class="ld-mobile-brand" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" width="168" height="97" viewBox="85 4 156 90" role="presentation" aria-label="all hands L&amp;D">
+
+<defs><path id="ld-mobile-amp" d="M1307 713 1625 642Q1600 554 1577.0 501.0Q1554 448 1512 376L1665 271Q1693 253 1737 228L1518 -24Q1458 8 1393.5 50.0Q1329 92 1278 122Q1172 52 1066 20Q919 -24 732 -24Q439 -24 296.0 98.0Q153 220 153 394Q153 519 237.0 630.5Q321 742 512 819Q432 916 402.0 987.5Q372 1059 372 1133Q372 1289 491.0 1390.0Q610 1491 852 1491Q1099 1491 1215.0 1395.0Q1331 1299 1331 1165Q1331 1090 1295.5 1021.0Q1260 952 1210.0 909.0Q1160 866 1031 781Q1138 674 1254 582Q1285 644 1307 713ZM839 970Q918 1013 961.0 1063.5Q1004 1114 1004 1159Q1004 1206 968.0 1238.5Q932 1271 869 1271Q807 1271 768.0 1235.0Q729 1199 729 1150Q729 1088 839 970ZM694 614Q610 555 582.5 513.0Q555 471 555 424Q555 351 618.0 294.0Q681 237 782 237Q891 237 1027 322Q897 422 694 614Z"/><mask id="ld-mobile-space" maskUnits="userSpaceOnUse" x="75" y="0" width="180" height="110"><rect x="75" y="0" width="180" height="110" fill="white"/><use href="#ld-mobile-amp" transform="translate(183 93) scale(.75) translate(-183 -93) matrix(0.03141025 0 0 -0.02772278 128.817308 92.334653)" fill="black" stroke="black" stroke-width="218" stroke-linejoin="round"/></mask></defs><g fill="#FFFFFF" transform="translate(1.333333 0)"><g mask="url(#ld-mobile-space)">
+<path fill="#FFFFFF" transform="translate(51 0)" d="M55 30H71V78H96L99 81V90L96 93H55Z"/>
+<g transform="translate(51 0)"><path fill="#FFB843" d="M55 30H71V48H55Z"/><path fill="#E8CA98" d="M55 30L71 48H55Z"/></g>
+<path transform="translate(174 93) scale(.666666667) translate(-174 -93)" fill="#FFFFFF" fill-rule="evenodd" d="M176 30H201C223 30 239 42 239 61.5S223 93 201 93H176Q174 93 174 91V32Q174 30 176 30Z M192 45L222 61.5L192 78Z"/>
+</g><use href="#ld-mobile-amp" transform="translate(183 93) scale(.75) translate(-183 -93) matrix(0.03141025 0 0 -0.02772278 128.817308 92.334653)" fill="white"/>
+<g fill-rule="evenodd" transform="translate(146.093333 34) scale(.13) translate(-1269 -165)">
+      <path d="M1300 191Q1315 191 1323 201V193H1341V260H1323V252
+      Q1315 262 1300 262C1282 262 1269 247 1269 227S1282 191 1300 191Z
+      M1306 207C1295 207 1288 215 1288 227S1295 246 1306 246
+      C1316 246 1323 238 1323 227S1316 207 1306 207Z"/>
+    <path d="M1353 165H1372V260H1353ZM1386 165H1405V260H1386Z"/>
+    <path d="M1445 165H1464V201Q1473 191 1487 191C1502 191 1510 201 1510 216
+      V260H1491V221C1491 211 1487 207 1479 207C1470 207 1464 213 1464 222V260H1445Z"/>
+    <path d="M1550 191Q1565 191 1573 201V193H1591V260H1573V252
+      Q1565 262 1550 262C1532 262 1519 247 1519 227S1532 191 1550 191Z
+      M1556 207C1545 207 1538 215 1538 227S1545 246 1556 246
+      C1566 246 1573 238 1573 227S1566 207 1556 207Z"/>
+    <path d="M1603 193H1621V202Q1630 191 1644 191C1660 191 1668 201 1668 217
+      V260H1649V222C1649 212 1645 207 1637 207C1628 207 1622 213 1622 222V260H1603Z"/>
+    <path d="M1707 191Q1721 191 1729 201V165H1748V260H1729V252
+      Q1721 262 1707 262C1689 262 1676 247 1676 227S1689 191 1707 191Z
+      M1713 207C1702 207 1695 215 1695 227S1702 246 1713 246
+      C1723 246 1730 238 1730 227S1723 207 1713 207Z"/>
+    <path d="M1789 191C1801 191 1811 197 1816 206L1802 215Q1797 206 1788 206
+      C1782 206 1779 209 1779 212C1779 216 1783 217 1793 220
+      C1808 224 1817 230 1817 241C1817 254 1805 262 1789 262
+      C1774 262 1762 255 1757 244L1772 235Q1777 247 1789 247
+      C1796 247 1800 244 1800 241C1800 237 1796 235 1785 233
+      C1769 229 1762 223 1762 213C1762 201 1773 191 1789 191Z"/>
+    </g></g></svg></span><span class="homeicon" id="homeicon"></span><span>all hands | 교육관리</span><span class="slash">/</span><b id="crumb"></b><span class="header-right"><i></i> 관리자 워크스페이스</span></header><main id="main" tabindex="-1"></main></div></div><dialog id="dialog"><form id="form"><div class="modalhead"><h2 id="modalTitle"></h2><button type="button" id="close" aria-label="닫기">×</button></div><div id="fields" class="fields"></div><div class="modalfoot"><button type="button" id="cancel">취소</button><button class="primary" type="submit">저장</button></div></form></dialog><div id="toast" role="status"></div><script>"use strict";
+const BASE_YEAR = 2026;
+const people = ["직원 A","직원 B","직원 C","직원 D","직원 E","직원 F"];
+const teams = ["경영지원","엔지니어링","생산"];
+const modes = ["사내 집합","외부 위탁","외부 온라인"];
+const areas = ["직무","공통","리더십","선택"];
+const frameworkGroups = [
+  {name:'전사공통', band:3, width:6, tone:'core', courses:[
+    ['신규입사자 입문교육(OJT)',0,5,97],['비즈니스 매너 교육(직장예절)',1,5,97],
+    ['조직활성화 교육',2,5,97],['성과관리 교육(성과코칭·목표관리)',3,5,97],
+    ['사내 면접관 교육',4,5,97],['품질 매뉴얼 교육',5,5,97]]},
+  {name:'리더십 역량', band:9, width:2, tone:'lead', courses:[
+    ['신규 직책자 교육',0,4,97],['리더십',1,4,21],['팔로워십 교육',1,26,97]]},
+  {name:'Global 역량', band:11, width:1, tone:'global', courses:[['사내 어학교육',0,6,97]]},
+  {name:'직무역량 · 기초', band:12, width:1, tone:'job', courses:[['2차전지 산업 관련 특강/세미나',0,6,97]]},
+  {name:'직무역량 · 전문직무', band:13, width:5, tone:'job', courses:[
+    ['공정 및 검사의 이해',0,29,96],['Tank의 구동원리',1,29,96],['프로젝트의 관리',2,29,96],
+    ['배터리 및 시스템의 이해',3,5,96],['자재산출/도면해독',4,41,96]]},
+  {name:'법정의무교육', band:18, width:6, tone:'required', courses:[
+    ['직장 내 성희롱 예방교육',0,4,96],['개인정보보호교육',1,4,96],['산업안전보건교육',2,4,96],
+    ['장애인 인식개선교육',3,4,96],['퇴직연금교육',4,4,96],['직장 내 괴롭힘 방지교육',5,4,96]]}
+];
+// Course titles come from the same curriculum matrix displayed on screen.
+const frameworkSpecs=[
+ ["c0",0,0,"현장 적응","입사 초기 업무 절차와 역할을 설명한다."],
+ ["c1",0,3,"성과 코칭","팀 목표를 정하고 성과 피드백을 연습한다."],
+ ["c2",1,0,"리더십","신임 직책자의 팀 운영 계획을 수립한다."],
+ ["c3",5,1,"정보보호","개인정보 처리 단계별 주의사항을 확인한다."],
+ ["c4",4,0,"공정·품질","공정 흐름과 검사 기준을 연결한다."],
+ ["c5",4,3,"배터리 기술","배터리 구성요소와 시스템 기능을 설명한다."],
+ ["c6",4,4,"도면 해독","도면을 읽고 필요한 자재를 산출한다."],
+ ["c7",3,0,"산업 이해","2차전지 산업의 가치사슬과 주요 공정을 설명한다."],
+ ["lang-en",2,0,"외국어 소통","영어로 업무 회의를 진행하고 후속 조치를 합의한다."],
+ ["pc0",0,1,"업무 소통","상황에 맞는 직장 예절을 적용한다."],
+ ["pc1",0,5,"공정·품질","품질 매뉴얼에서 작업 기준을 찾고 스스로 점검한다."],
+ ["pc2",1,2,"업무 소통","업무 진행 상황과 협업 요청을 명확히 전달한다."],
+ ["pc3",0,2,"협업","부서 간 협업 절차를 합의한다."],
+ ["pc4",1,1,"리더십","구성원에게 행동 중심의 피드백을 제공한다."],
+ ["fw-interview",0,4,"면접 역량","평가 기준에 따라 면접 질문을 구성한다."],
+ ["fw-tank",4,1,"설비 기술","Tank의 구성과 구동 원리를 설명한다."],
+ ["fw-project",4,2,"프로젝트 관리","프로젝트 일정과 과제별 책임을 관리한다."],
+ ["fw-harassment",5,0,"직장문화","직장 내 성희롱 예방과 대응 절차를 확인한다."],
+ ["fw-safety",5,2,"안전보건","작업 전 위험요인을 확인하고 예방 절차를 적용한다."],
+ ["fw-inclusion",5,3,"직장문화","장애에 대한 이해를 높이고 협업 사례를 검토한다."],
+ ["fw-pension",5,4,"제도 이해","퇴직연금 제도의 구성과 운영 절차를 살펴본다."],
+ ["fw-bullying",5,5,"직장문화","직장 내 괴롭힘 예방과 대응 절차를 확인한다."]
+];
+function frameworkCatalog(){
+ const kinds=["공통","리더십","어학","직무","직무","법정의무"],creditAreas=["공통","리더십","선택","직무","직무","공통"];
+ return frameworkSpecs.map(([id,g,index,skill,goal])=>({
+  id,name:frameworkGroups[g].courses[index][0],kind:kinds[g],area:creditAreas[g],skill,goal,level:g===1?4:3,
+  hours:g===5?1:g===2?4:id.startsWith("pc")?2:3,credit:g===5?0:id.startsWith("pc")?1:2,
+  outline:"사례 검토 · 실습 · 피드백",criteria:"출석 및 실습 확인",candidates:"",
+  ...(g===2?{language:"영어",languageLevel:"영어로 회의 진행"}:{})
+ }));
+}
+const uid = () => crypto.randomUUID();
+function demoLearningPaths(){
+ return {
+  paths:[
+   {id:"path-recruit",name:"실무자 → 팀 관리자",target:"팀 관리자",steps:[
+    {id:"r1",stage:"1 · 직무 기초",course:"c0",required:true},
+    {id:"r2",stage:"2 · 독립 수행",course:"c1",required:true},
+    {id:"r3",stage:"3 · 리더 역할",course:"c2",required:true},
+    {id:"r4",stage:"3 · 리더 역할",course:"lang-en",required:false}]},
+   {id:"path-ops",name:"생산·기술 실무자 → 기술 전문가",target:"기술 전문가",steps:[
+    {id:"o1",stage:"1 · 운영 기초",course:"c7",required:true},
+    {id:"o2",stage:"2 · 시스템 이해",course:"c5",required:true},
+    {id:"o3",stage:"3 · 전문 실무",course:"c4",required:true},{id:"o4",stage:"3 · 해외 협업",course:"lang-en",required:false}]}],
+  pathAssignments:[],
+  careerEvents:[],languageRecords:[]
+ };
+}
+
+function initialData(){
+ const courses=frameworkCatalog();
+ const trainers=["강사 A","강사 B","강사 C"].map((name,i)=>({id:"t"+i,name,type:i===1?"외부":"사내",org:["경영지원","외부 교육기관","생산"][i],topic:["전사공통·리더십","산업·기술","공정·품질"][i],fee:i===1?150000:0}));
+ const slots=[[2,6,11],[3,8,12],[4,9,12],[3,10,11],[5,9,11],[6,10,12],[7,11],[8,12]];
+ const sessions=[];
+ courses.slice(0,slots.length).forEach((c,i)=>slots[i].forEach((m,j)=>{const day=m===11?[26,25,18,27,16,10,24,12][i]:10+i;const date='2026-'+String(m).padStart(2,'0')+'-'+String(day).padStart(2,'0');sessions.push({id:"s"+i+j,course:c.id,date,end:date,status:m<11?"종료":m===11&&i===4?"진행 중":"예정",mode:i===3?"외부 온라인":i===1?"외부 위탁":"사내 집합",trainer:trainers[i%3].id,team:i===3?"전사":teams[i%3],provider:i===3?"위탁 교육기관":i===1?"커리어교육원":"",budget:i===1?500000:0,cost:i===1&&m<11?450000:0,contract:i===1?"단체 위탁":"",settle:m<11?"정산 완료":"정산 예정",url:"",rule:i===3?"사내 교육담당자 확인 기준 (예시)":"",reviewDate:"",audience:i===3?"해당 회차 배정자":"",approval:"승인"});}));
+ const enroll=[];
+ sessions.forEach((slot, sessionIndex) => {
+   const participants = people.filter((_, index) => (index + sessionIndex) % 3 !== 0);
+   const credits = courses.find(item => item.id === slot.course).credit;
+   participants.forEach((person, index) => {
+     const completed = slot.status === "종료" && (sessionIndex + index) % 5 !== 0;
+     const date = completed ? slot.end : "";
+     enroll.push({
+       id: "demo-enroll-" + sessionIndex + "-" + index, session: slot.id, person,
+       team: teams[people.indexOf(person) % teams.length],
+       status: completed ? "수료" : slot.status === "진행 중" ? "진행 중" : "미이수",
+       progress: completed ? "100" : "", asof: date, completed: date,
+       proof: completed ? "체험용 수료 예시" : "", evidence: "", creditOverride: "",
+       awardedCredit: completed ? credits : null, reason: ""
+     });
+   });
+ });
+ const needs=[{id:"n1",name:"프로젝트의 관리",team:"엔지니어링",problem:"부서 간 일정과 책임 범위 조정이 필요합니다.",target:"프로젝트 담당자",count:6,priority:"높음",route:"신규 개발",status:"접수",course:""},{id:"n2",name:"Tank의 구동원리",team:"생산",problem:"설비 구성과 구동 원리에 대한 실습이 필요합니다.",target:"설비 담당자",count:4,priority:"보통",route:"외부 위탁",status:"검토 중",course:""}];
+ const dev=[{id:"d1",name:"프로젝트의 관리",goal:"일정과 역할을 정하고 지연 과제를 추적한다.",target:"프로젝트 담당자",outline:"일정 계획, 이슈 검토 및 변경 관리 실습",materials:"사례 일정표",assessment:"작성한 프로젝트 계획 검토",stage:"초안",source:"n1",course:""}];
+ const evaluations=enroll.filter(e=>e.status==="수료").slice(0,12).map((e,i)=>({id:"v"+i,enroll:e.id,trainer:sessions.find(s=>s.id===e.session).trainer,goal:String(4+i%2),useful:"4",level:"4",practice:"4",expert:"5",explain:String(4+i%2),answer:"4",feedback:"4",comment:"",coach:"",applied:""}));
+ sessions.push({id:"lang-en-dec",course:"lang-en",date:"2026-12-04",end:"2026-12-04",status:"예정",approval:"승인",mode:"사내 집합",trainer:"",team:"전사",provider:"",budget:0,cost:0,contract:"",settle:"해당 없음",url:"",audience:"",rule:"",reviewDate:""});
+ sessions.filter(s=>s.status==="예정").forEach(s=>s.intake="접수 중");
+ return {frameworkCatalogVersion:1,...demoLearningPaths(),courses,trainers,sessions,enroll,needs,dev,evaluations,goals:people.map((person,i)=>({id:"g"+i,year:2026,person,area:"직무",target:10})),adjustments:[]};
+}
+const labels={budgetPlan:"교육예산 수립",mySkills:"역량평가·추천 과정",myPlan:"나의 이수계획",planReview:"개인 이수계획 검토",myPath:"나의 경력경로",apply:"교육신청",myRequests:"나의 신청·이수현황",applications:"교육신청 관리",framework:"교육체계도",
+ profile:"개인 이력관리",career:"경력경로별 교육과정",language:"어학교육",dashboard:"대시보드",annual:"연간스케줄",sessions:"교육 일정·진행률",needs:"교육니즈 조사",dev:"교육과정 개발",courses:"사내 교육과정",trainers:"강사풀 관리",outsource:"외주교육 관리",campus:"사이버캠퍼스",mandatory:"법정의무교육",evaluations:"교육평가 관리",ratings:"강사평가 관리",credits:"이수학점 관리",history:"교육이력 관리"
+};
+const navGroups=[["교육 기획",["framework","annual","budgetPlan","career","match","needs","dev"]],["교육 운영",["sessions","courses","trainers","outsource","campus","language","applications","planReview","mandatory"]],["평가 · 이력",["evaluations","ratings","credits","profile","history"]]];
+const icons={budgetPlan:"M4 4h16v16H4z M8 8h8 M8 12h2 M13 12h3 M8 16h2 M13 16h3",mySkills:"M3 20h18 M6 17v-5 M12 17V5 M18 17V9",myPlan:"M5 4h14v16H5z M8 9h8 M8 14h6",planReview:"M5 4h14v16H5z M8 12l3 3 5-6",myPath:"M3 19h5v-5h5V9h7 M15 4h5v5",apply:"M4 5h16v15H4z M8 3v4 M16 3v4 M8 14h8 M12 10v8",myRequests:"M5 3h14v18H5z M8 9h8 M8 14h8",applications:"M5 3h14v18H5z M8 13l3 3 5-6",profile:"M3 4h18v16H3z M6 9h4 M6 13h4 M13 9h5 M13 13h5",career:"M3 19h5v-5h5V9h7 M15 4h5v5",language:"M3 5h12 M9 3v2 M5 8q3 6 9 8 M13 5q-2 9-10 12 M14 21l4-10 4 10 M16 17h4",framework:"M3 4h18v16H3z M3 9h18 M8 4v16 M13 9v11 M17 9v11",dashboard:"M3 3h8v8H3z M14 3h7v5h-7z M3 14h8v7H3z M14 11h7v10h-7z",annual:"M3 5h18v15H3z M3 10h18 M8 3v4 M16 3v4 M8 14h2 M14 14h2",needs:"M3 4h18v13H9l-5 4v-4H3z M7 9h10 M7 12h6",dev:"M4 16l-1 5 5-1L20 8l-4-4z M13 7l4 4",sessions:"M4 4v16h17 M8 16v-5 M13 16V6 M18 16v-7",courses:"M3 5q5-2 9 1 4-3 9-1v14q-5-2-9 1-4-3-9-1z M12 6v14",trainers:"M7 14c-3 0-5 3-5 6h14c0-3-2-6-5-6 M12 7a3.5 3.5 0 1 1-7 0 3.5 3.5 0 1 1 7 0 M16 5q6 2 1 6 M18 14q4 1 4 6",outsource:"M3 7h18v13H3z M8 7V4h8v3 M3 12q9 5 18 0",campus:"M2 4h20v13H2z M12 17v4 M8 21h8",mandatory:"M12 2l8 4v6q0 6-8 10-8-4-8-10V6z M8 12l3 3 5-6",evaluations:"M5 4h14v17H5z M8 8h7 M8 12h8 M8 16h5",ratings:"M12 2l3 7 7 1-5 5 1 7-6-4-6 4 1-7-5-5 7-1z",credits:"M12 3l10 6-10 5L2 9z M6 12v5q6 5 12 0v-5",history:"M3 11a9 9 0 1 1 2 7 M3 4v7h6 M12 7v6l4 2",home:"M3 10l9-7 9 7 M5 9v12h14V9 M10 21v-7h4v7"};
+
+</script><script>"use strict";
+const capabilities=[...new Set(frameworkSpecs.map(row=>row[3]))];
+function initializeCompetencies(db){
+ if(!db.competencies){
+ db.competencies=people.flatMap((person,i)=>[0,1,2].map((_,j)=>({id:"skill"+i+"-"+j,person,team:teams[i%3],job:["경영지원 담당자","엔지니어","생산 담당자"][i%3],skill:capabilities[(i+j)%8],current:1+(i+j)%3,target:3+(i+j)%2,assessed:"2026-11-01",memo:"직무 역량 진단 예시"})));
+
+ }
+ return db;
+}
+labels.match="역량별 교육매칭";icons.match="M3 19l6-7 4 3 8-11 M15 4h6v6";
+function recommendations(skill){
+ if(+skill.current>=+skill.target)return [];
+ const completed=new Set(db.enroll.filter(e=>e.person===skill.person&&e.status==="수료").map(e=>session(e.session)?.course));
+ return db.courses.filter(c=>c.skill===skill.skill&&+c.level>+skill.current&&!completed.has(c.id)).sort((a,b)=>Math.abs(+skill.target-a.level)-Math.abs(+skill.target-b.level));
+}
+</script><script>"use strict";
+labels.pip="PIP 과정 운영"; icons.pip=icons.courses;navGroups[1][1].splice(1,0,"pip");
+const pipPractice=[
+ ["협업 상황에서 소통 방식이 불명확함","상황별 응대 표현을 정리해 실무에 적용","소통 지침 실천 여부"],
+ ["작업 확인 누락과 재작업 반복","품질 매뉴얼에 따라 작업 전후 점검표 작성","재작업 건수 변화"],
+ ["업무 진행 보고 누락","진행 상황과 지원 요청을 구분해 주간보고 작성","기한 내 보고율"],
+ ["부서 간 인계 과정에서 누락 발생","협업 상대와 인계 기준을 정하고 적용","인계 누락 건수"],
+ ["피드백 후 개선 행동이 불명확함","구성원과 개선 행동을 정하고 후속 면담","개선 행동 이행률"]
+];
+const PIP_OPTIONS=pipPractice.map(([issue,task,metric],i)=>{
+ const c=frameworkSpecs.find(r=>r[0]==="pc"+i);
+ return [frameworkGroups[c[1]].courses[c[2]][0],issue,c[4],task,metric,c[3]];
+});
+function initPip(db){
+ if(!db.pip){db.pip=[];
+ db.pip.push({id:"p1",issue:PIP_OPTIONS[1][1],course:"pc1",target:"생산",method:"워크숍 + 현업 실습",task:PIP_OPTIONS[1][3],metric:PIP_OPTIONS[1][4],result:"",session:"",year:2026});}
+ return db;
+}
+const desc={budgetPlan:"교육 회차의 예산과 추가 비용을 월별로 편성하고 승인 예산과 비교합니다.",mySkills:"역량평가와 자기평가를 비교하고 현재 모집 중인 과정을 확인합니다.",myPlan:"연도별 교육 회차와 이수 예정일을 정하고 담당자에게 계획을 제출합니다.",planReview:"목표학점과 예상 취득학점을 검토해 개인별 이수계획을 확정합니다.",myPath:"성장 방향을 선택하고 내 경력경로에 필요한 교육을 확인합니다.",apply:"접수 중인 교육 회차를 선택해 수강을 신청합니다.",myRequests:"신청 결과와 처리 메모를 확인하고 대기 중인 신청을 취소할 수 있습니다.",applications:"교육신청을 검토하고 승인한 직원을 회차에 배정합니다.",career:"목표 직무에 필요한 교육과정을 단계별로 편성하고 직원이 선택할 경로를 관리합니다.",profile:"직원별 경력과 누적 교육이력을 확인하고 다음 교육을 배정합니다.",language:"언어별 교육과정과 직원의 목표 수준, 성적 및 수강이력을 관리합니다.",framework:"직급·직군별 교육과정을 역량 구분에 따라 확인합니다.",dashboard:"교육 운영 지표와 다가오는 교육을 확인합니다.",annual:"월별 교육 일정을 확인하고 교육계획을 편성합니다.",sessions:"계획한 교육 회차와 진행 상태를 관리합니다.",needs:"부서별 교육 수요와 우선순위를 검토합니다.",dev:"교육 수요를 과정으로 설계하고 승인한 과정을 등록합니다.",match:"직원별 현재 수준과 목표 수준을 비교해 교육을 배정합니다.",pip:"기존 PIP에서 운영할 교육을 선택하고 현업 과제와 적용 결과를 관리합니다.",courses:"교육목표, 실습 내용과 수료 기준을 과정별로 관리합니다.",trainers:"사내·외부 강사의 전문분야와 출강 이력을 확인합니다.",outsource:"외주 교육의 위탁기관, 계약, 예산과 정산을 관리합니다.",campus:"외부 온라인교육의 수강 배정, 기한과 수료 결과를 관리합니다.",mandatory:"교육별 적용 기준과 대상자별 이수기한을 확인합니다.",evaluations:"회차별 교육평가와 현업 적용 결과를 확인합니다.",ratings:"강사별 응답 수와 항목별 평가 결과를 확인합니다.",credits:"직원별 목표학점과 영역별 취득학점을 확인합니다.",history:"직원별 교육시간, 이수학점과 수료 근거를 확인합니다."};
+const $=s=>document.querySelector(s);
+const esc=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const icon=k=>'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="'+icons[k]+'"/></svg>';
+const storageKey="allhands-ld-public-demo-v1";
+function loadRecords(){try{return JSON.parse(localStorage.getItem(storageKey)||"null")||initialData()}catch{return initialData()}}
+
+let db=initPip(initializeCompetencies(loadRecords()));
+db.paths??=[];db.pathAssignments??=[];db.careerEvents??=[];db.languageRecords??=[];
+const today=new Intl.DateTimeFormat("sv-SE",{timeZone:"Asia/Seoul"}).format(new Date());
+let page=Object.hasOwn(labels,location.hash.slice(1))?location.hash.slice(1):"dashboard", year=Number(today.slice(0,4)),filter="", personFilter="", scope="",saveAction,afterRefresh=()=>{};
+
+const course=id=>db.courses.find(c=>c.id===id),session=id=>db.sessions.find(s=>s.id===id),trainer=id=>db.trainers.find(t=>t.id===id);
+const ss=()=>db.sessions.filter(s=>Number(s.date.slice(0,4))===year);
+const en=()=>db.enroll.filter(e=>ss().some(s=>s.id===e.session));
+const hist=()=>db.enroll.filter(e=>e.status==="수료"&&Number(e.completed.slice(0,4))===year);
+const sum=(a,f)=>a.reduce((v,x)=>v+Number(f(x)||0),0);
+const earned=e=>e.creditOverride!==""&&e.creditOverride!=null?+e.creditOverride:+(e.awardedCredit??course(session(e.session)?.course)?.credit??0);
+const gap=s=>Math.max(0,s.target-s.current);
+const actual=s=>s.status==="종료"?"done":s.end<today&&s.status!=="종료"?"late":s.status==="진행 중"?"live":"plan";
+const status=s=>({done:"종료",late:"지연",live:"진행 중",plan:"예정"}[actual(s)]);
+const tag=(s,cl="plan")=>'<span class="tag '+cl+'">'+esc(s)+'</span>';
+const button=(label,act,id="",cls="linkbtn")=>'<button class="'+cls+'" data-action="'+esc(act)+'" data-id="'+esc(id)+'">'+esc(label)+'</button>';
+const yearSelect=()=>'<select aria-label="계획 연도" id="year">'+Array.from(new Set([2025,2026,2027,2028,year,...db.sessions.map(s=>Number(s.date.slice(0,4)))] )).sort().map(y=>'<option '+(year===y?'selected':'')+'>'+y+'</option>').join("")+'</select>';
+const section=(title,body,action="")=>'<section class="panel"><div class="panelhead"><h2>'+title+'</h2>'+action+'</div>'+body+'</section>';
+const tbl=(headers,rows)=>'<div class="scroll"><table><thead><tr>'+headers.map(h=>'<th>'+h+'</th>').join("")+'</tr></thead><tbody>'+ (rows.map(r=>'<tr>'+r.map(x=>'<td>'+x+'</td>').join("")+'</tr>').join("")||'<tr><td class="empty" colspan="'+headers.length+'">조건에 맞는 기록이 없습니다.</td></tr>')+'</tbody></table></div>';
+const card=(title,value,unit,hint,key,color)=>'<div class="card"><div class="khead">'+title+'<span class="kicon '+color+'">'+icon(key)+'</span></div><div class="big">'+value+'<small>'+unit+'</small></div><div class="hint">'+hint+'</div></div>';
+const fieldMatch=(...vals)=>vals.join(" ").toLowerCase().includes(filter.trim().toLowerCase());
+const registeredPeople=()=>Array.from(new Set([...people,...db.enroll.map(e=>e.person),...db.competencies.map(s=>s.person),...db.goals.map(g=>g.person)]));
+function toolbar(ph="과정명 또는 담당 정보 검색",persons=false,extra=""){return '<div class="filters"><input id="search" aria-label="검색" placeholder="'+ph+'" value="'+esc(filter)+'">'+(persons?'<select id="person" aria-label="직원 선택"><option value="">전체 직원</option>'+registeredPeople().sort().map(n=>'<option '+(personFilter===n?'selected':'')+'>'+esc(n)+'</option>').join("")+'</select>':'')+extra+'</div>'}
+const relevant=(p)=>!personFilter||p===personFilter;
+const dashNumber=value=>Number(value).toLocaleString("ko-KR",{maximumFractionDigits:1});
+function rateBar(label,numerator,denominator,detail,color){
+ const pct=denominator?Math.round(numerator*100/denominator):null;
+ return '<div class="db-rate"><div><b>'+label+'</b><strong>'+(pct===null?"—":pct+"%")+'</strong></div><div class="db-track" aria-hidden="true"><i style="width:'+Math.min(100,pct||0)+'%;background:'+color+'"></i></div><small>'+detail+'</small></div>';
+}
+function educationIndicators(list){
+ const completed=list.filter(s=>s.status==="종료").length;
+ const due=list.filter(s=>s.end<=today),doneDue=due.filter(s=>s.status==="종료").length;
+ const ended=en().filter(e=>session(e.session)?.status==="종료"),completeEn=ended.filter(e=>e.status==="수료").length;
+ const totalHours=sum(hist(),e=>course(session(e.session)?.course)?.hours),staffCount=registeredPeople().length;
+ const percent=list.length?Math.round(completed*100/list.length):null;
+ return '<section class="db-panel db-education"><h2>연간 교육 운영</h2><div class="db-lead">'+
+ '<div class="db-ring" style="--pct:'+(percent||0)+'%"><div><strong>'+(percent===null?"—":percent+'<em>%</em>')+'</strong><span>교육 진행률</span></div></div>'+
+ '<div class="db-count"><span>연간 계획 회차</span><strong>'+dashNumber(list.length)+'<em>회</em></strong><small>'+new Set(list.map(s=>s.course)).size+'개 과정 편성 · '+completed+'회 종료</small></div></div>'+
+ rateBar("계획 대비 달성률",doneDue,due.length,"기준일까지 종료 "+doneDue+" / 예정 "+due.length+"회","#4278af")+
+ rateBar("교육생 수료율",completeEn,ended.length,"종료 회차 수료 "+completeEn+" / 배정 "+ended.length+"건","#7863aa")+
+ '<div class="db-foot"><div><b>인당 교육시간</b><small>누적 수료 '+dashNumber(totalHours)+'시간 ÷ 등록 직원 '+staffCount+'명</small></div><strong>'+(staffCount?dashNumber(totalHours/staffCount):"—")+'<em>시간</em></strong></div></section>';
+}
+function monthScheduleChart(list){
+ const months=Array.from({length:12},(_,i)=>list.filter(s=>Number(s.date.slice(5,7))===i+1));
+ const max=Math.max(1,...months.map(s=>s.length));
+ const bars=months.map((slots,i)=>{
+  const done=slots.filter(s=>s.status==="종료").length,month=i+1;
+  const label=month+"월 · 계획 "+slots.length+"회 · 종료 "+done+"회";
+  return '<button type="button" class="db-month" data-action="dashboardMonth" data-id="'+month+'" aria-label="'+label+'" title="'+label+'"><span class="db-plot"><span class="db-stack" style="height:'+slots.length/max*100+'%"><b>'+slots.length+'</b><i style="height:'+(slots.length?done/slots.length*100:0)+'%"></i></span></span><span>'+month+'월</span></button>';
+ }).join("");
+ return '<section class="db-panel db-calendar"><div class="db-title"><h2>월별 교육 운영 현황</h2>'+button("연간스케줄 보기","go","annual")+'</div><div class="db-chartkey"><span><i></i>종료</span><span><i></i>미종료</span><small>단위 · 회</small></div><div class="db-bars">'+bars+'</div></section>';
+}
+function budgetIndicators(list){
+ const rec=db.annualBudgets.find(b=>b.year===year),spent=sum(list,s=>s.cost),staff=registeredPeople().length;
+ const budget=rec?Number(rec.amount):null,ratio=budget>0?spent*100/budget:null;
+ const amount=(v)=>dashNumber(v)+'원';
+ const split=new Map();
+ for(const s of list){if(Number(s.cost)>0)split.set(s.mode||"기타",(split.get(s.mode||"기타")||0)+Number(s.cost))}
+ const palette=["#285968","#d29b4a","#7996bc","#9d8cb5"];
+ const items=[...split.entries()].sort((a,b)=>b[1]-a[1]);
+ const breakdown=items.map(([mode,cost],i)=>'<span><i style="background:'+palette[i%palette.length]+'"></i>'+esc(mode)+' <b>'+amount(cost)+'</b></span>').join("");
+ const fill=items.map(([,cost],i)=>'<i style="width:'+100*cost/spent+'%;background:'+palette[i%palette.length]+'"></i>').join("");
+ return '<section class="db-panel db-budget"><div class="db-title"><h2>교육예산 집행</h2>'+button("예산 설정","annualBudget")+'</div>'+
+ '<div class="db-spend"><span>현재 집행금액</span><strong>'+dashNumber(spent)+'<em>원</em></strong></div>'+
+ '<div class="db-rate"><div><b>예산 집행률</b><strong>'+(ratio===null?"—":dashNumber(ratio)+"%")+'</strong></div><div class="db-track" aria-hidden="true"><i style="width:'+Math.min(100,ratio||0)+'%;background:'+(budget!==null&&spent>budget?"#af514a":"#d29b4a")+'"></i></div>'+
+ '<small>연간 교육예산 '+(budget===null?"미설정":amount(budget))+(budget===null?"":spent>budget?" · "+amount(spent-budget)+" 초과":" · 잔액 "+amount(budget-spent))+'</small></div>'+
+ '<div class="db-distribution"><b>운영방식별 집행액</b><div class="db-split" aria-hidden="true">'+fill+'</div><div class="db-chartkey">'+(breakdown||'<small>집행 내역이 없습니다.</small>')+'</div></div>'+
+ '<div class="db-foot"><div><b>인당 교육비</b><small>집행금액 ÷ 등록 직원 '+staff+'명</small></div><strong>'+(staff?dashNumber(Math.round(spent/staff)):"—")+'<em>원</em></strong></div></section>';
+}
+
+function annualSchedule(list){
+ const months=Array.from({length:12},(_,i)=>i+1),current=+today.slice(0,4)===year?+today.slice(5,7):0;
+ const legend='<div class="legend">'+["종료","진행 중","예정","지연"].map((t,i)=>'<span class="key"><i class="dot '+["done","live","plan","late"][i]+'"></i>'+t+'</span>').join("")+'</div>';
+ const grid='<div class="scroll"><table class="calendar"><thead><tr><th class="course">교육과정</th>'+months.map(m=>'<th class="'+(m===current?'current':'')+'">'+m+'월</th>').join("")+'</tr></thead><tbody>'+Array.from(new Set(list.map(s=>s.course))).map(id=>'<tr><td class="course">'+button(course(id)?.name||"과정","course",id,"quiet")+'</td>'+months.map(m=>'<td class="'+(current===m?'current':'')+'">'+list.filter(s=>s.course===id&&+s.date.slice(5,7)===m).map(s=>'<button class="mark '+actual(s)+'" data-action="session" data-id="'+esc(s.id)+'" title="'+esc(s.date+" · "+status(s))+'" aria-label="'+esc(course(id).name+" "+s.date+" "+status(s))+'">'+s.date.slice(8)+'</button>').join(" ")+'</td>').join("")+'</tr>').join("")+'</tbody></table></div>'+(!list.length?'<p class="empty">편성된 회차가 없습니다. 교육계획을 추가하세요.</p>':'');
+ return section("월별 교육계획표",grid,legend);
+}
+function dashboard(list){
+ const upcoming=list.filter(s=>s.end>=today&&s.status!=="종료").sort((a,b)=>a.date.localeCompare(b.date)).slice(0,3);
+ const row=(title,meta,badge,act,id,lead="")=>'<button class="listrow" data-action="'+act+'" data-id="'+id+'">'+lead+'<span><strong>'+esc(title)+'</strong><small class="meta">'+esc(meta)+'</small></span>'+badge+'</button>';
+ return '<div class="bottom">'+section("다가오는 교육",'<div class="list">'+(upcoming.map(s=>row(course(s.course).name,s.team+" · "+s.mode,tag(status(s),actual(s)),"session",s.id,'<span class="datebox"><small>'+Number(s.date.slice(5,7))+'월</small><b>'+s.date.slice(8)+'</b></span>')).join("")||'<p class="empty">예정된 교육이 없습니다.</p>')+'</div>',button("연간스케줄 보기","go","annual"))+section("교육니즈 검토",'<div class="list">'+(db.needs.filter(n=>n.status!=="반영").slice(0,3).map(n=>row(n.name,n.team+" · "+n.count+"명",tag(n.status,n.status==="접수"?"live":"plan"),"need",n.id)).join("")||'<p class="empty">검토할 수요가 없습니다.</p>')+'</div>',button("전체 보기","go","needs"))+'</div>';
+}
+const pickView={budgetPlan:["예산 항목 추가","budgetEntry"],apply:["외부교육 신청","outsideApply"],career:["경력경로 등록","editPath"],language:["어학 과정 등록","languageCourse"],sessions:["회차 추가","session"],outsource:["위탁교육 추가","session"],campus:["수강 배정","enrollment"],mandatory:["대상자 배정","enrollment"],courses:["과정 등록","course"],needs:["교육니즈 등록","need"],dev:["개발과정 등록","development"],trainers:["강사 등록","instructor"],evaluations:["평가 입력","evaluation"],ratings:["평가 입력","evaluation"],credits:["목표학점 설정","goal"],history:["수료 기록 추가","enrollment"],match:["역량 진단 등록","competency"],pip:["운영과정 선정","piprecord"],dashboard:["교육계획 추가","session"],annual:["교육계획 추가","session"]};
+function sessionRows(list){return list.filter(s=>fieldMatch(course(s.course)?.name,s.team,s.provider,status(s))).sort((a,b)=>a.date.localeCompare(b.date)).map(s=>[button(course(s.course).name,"session",s.id),esc(s.date),esc(s.team),esc(s.mode),esc(trainer(s.trainer)?.name||"미정"),tag(status(s),actual(s)),esc(s.approval||"승인"),button("참여자","roster",s.id)])}
+function frameworkScreen(){
+  const cell=(name,col,span,row,rows,kind)=>'<div class="fm-cell '+kind+'" style="grid-area:'+row+' / '+col+' / span '+rows+' / span '+span+'">'+name+'</div>';
+  const heads=[cell('구분',1,2,1,2,'fm-head'),cell('전사공통',3,6,1,2,'fm-head'),
+    cell('리더십<br>역량',9,2,1,2,'fm-head'),cell('Global<br>역량',11,1,1,2,'fm-head'),
+    cell('직무역량',12,6,1,1,'fm-head'),cell('기초',12,1,2,1,'fm-head fm-sub'),
+    cell('전문직무',13,5,2,1,'fm-head fm-sub'),cell('법정의무교육',18,6,1,2,'fm-head')];
+  const roles=[cell('임원',1,2,3,1,'fm-role'),cell('직책자',1,2,4,1,'fm-role'),cell('팀원',1,1,5,4,'fm-role')];
+  ['경영지원','영업','엔지니어링','생산'].forEach((name,i)=>roles.push(cell(name,2,1,5+i,1,'fm-role')));
+  const bands=Array.from({length:6},(_,i)=>cell('',3,21,3+i,1,'fm-gridline')).join('');
+  const bars=frameworkGroups.map(group=>{
+    const edge=cell('',group.band,group.width,3,6,'fm-divider');
+    return edge+group.courses.map(([name,lane,top,bottom])=>'<div class="fm-lane" style="grid-area:3 / '+(group.band+lane)+' / span 6 / span 1"><span class="fm-bar fm-'+group.tone+'" style="top:'+top+'%;bottom:'+(100-bottom)+'%" title="'+esc(name)+'">'+esc(name)+'</span></div>').join('');
+  }).join('');
+  const list=frameworkGroups.map(g=>'<tr><th scope="row">'+esc(g.name)+'</th><td>'+g.courses.map(c=>esc(c[0])).join(' · ')+'</td></tr>').join('');
+  return '<section class="panel fm-panel"><h2>교육체계도</h2><div class="fm-scroll" tabindex="0" role="region" aria-label="직급·직군별 교육체계도. 좁은 화면에서는 좌우로 이동할 수 있습니다."><div class="fm-chart">'+heads.join('')+roles.join('')+bands+bars+'</div></div><p class="fm-note">이 교육체계를 기준으로 매년 별도의 사내 교육계획을 수립합니다.</p><details class="fm-list"><summary>과정명 가로로 읽기</summary><table><thead><tr><th>역량 구분</th><th>교육과정</th></tr></thead><tbody>'+list+'</tbody></table></details></section>';
+}
+
+let activeEmployee=people[0],activePath=db.paths[0]?.id||"";
+const currentPath=()=>db.paths.find(p=>p.id===activePath);
+const assignedPath=person=>db.paths.find(p=>p.id===db.pathAssignments.find(a=>a.person===person)?.path);
+function picker(id,label,items,selected){
+ return '<label class="ld-picker">'+esc(label)+'<select id="'+id+'">'+items.map(([id,name])=>'<option value="'+esc(id)+'" '+(id===selected?'selected':'')+'>'+esc(name)+'</option>').join("")+'</select></label>';
+}
+function employeePicker(){return picker("careerEmployee","직원",registeredPeople().sort().map(p=>[p,p]),activeEmployee)}
+function eligibleSession(s){return s.approval==="승인"&&s.status!=="종료"&&s.end>=today}
+function learningRecords(person){
+ return db.enroll.filter(e=>e.person===person&&course(session(e.session)?.course)).sort((a,b)=>(b.completed||session(b.session).date).localeCompare(a.completed||session(a.session).date));
+}
+function stepState(rows,cid){
+ const records=rows.filter(e=>session(e.session).course===cid);
+ if(records.some(e=>e.status==="수료"))return ["수료","done"];
+ const active=records.filter(e=>{const s=session(e.session);return s.end>=today&&s.status!=="종료"});
+ if(active.some(e=>e.status==="진행 중"))return ["진행 중","live"];
+ return active.length?["배정됨","live"]:["미이수","plan"];
+}
+function employeeProfile(){
+ const person=activeEmployee,rows=learningRecords(person),done=rows.filter(e=>e.status==="수료");
+ const path=assignedPath(person),job=db.competencies.filter(r=>r.person===person).sort((a,b)=>b.assessed.localeCompare(a.assessed))[0];
+ const events=db.careerEvents.filter(r=>r.person===person).sort((a,b)=>b.date.localeCompare(a.date));
+ const current=events.find(r=>r.date<=today)||job;
+ const required=path?.steps.filter(r=>r.required)||[],completed=required.filter(r=>stepState(rows,r.course)[0]==="수료").length;
+ const metrics='<div class="kpis">'+card("누적 수료",done.length,"회","전체 교육이력","history","")+card("누적 교육시간",sum(done,e=>course(session(e.session).course).hours),"시간","수료 기록 기준","sessions","mint")+card("누적 인정학점",sum(done,earned),"학점","개별 인정학점 반영","credits","lav")+card("경력경로 필수 이수",completed+" / "+required.length,"과정",path?path.target:"경력경로 미설정","career","gold")+'</div>';
+ const head='<div class="filters">'+employeePicker()+'<strong>'+esc([current?.team,current?.job].filter(Boolean).join(" · ")||"소속·직무 미등록")+'</strong></div>';
+ const plan=path?'<p class="ld-context">'+esc(path.name)+'</p>'+tbl(["단계","교육과정","구분","상태","다음 행동"],path.steps.map(step=>{
+  const c=course(step.course),[state,color]=stepState(rows,step.course);
+  return [esc(step.stage),esc(c?.name||"과정 미등록"),step.required?"필수":"선택",tag(state,color),state==="미이수"&&c?button("회차 선택","pathEnroll",c.id):"—"];
+ })):'<p class="empty">직원이 아직 경력경로를 선택하지 않았습니다.</p>';
+ const histRows=rows.map(e=>{const s=session(e.session),c=course(s.course);return [esc(e.completed||s.date),button(c.name,"enrollment",e.id),esc(c.kind),tag(e.status,e.status==="수료"?"done":"plan"),e.status==="수료"?esc(c.hours)+"시간":"—",e.status==="수료"?earned(e)+"학점":"—"]});
+ return head+metrics+section("개인 경력경로",plan)+
+ section("직무·경력 이력",tbl(["적용일","부서","직무·역할","담당 업무"],events.map(r=>[button(r.date,"careerEvent",r.id),esc(r.team),esc(r.job),esc(r.memo||"—")])),button("경력 추가","careerEvent"))+
+ section("어학 목표·평가 이력",languageHistory(person),button("목표·성적 기록","languageRecord"))+
+ section("전체 교육이력",tbl(["수료일·시작일","교육과정","교육구분","이수 상태","시간","학점"],histRows),button("교육이력 추가","profileEnrollment"));
+}
+function pathScreen(){
+ const path=currentPath();
+ const choices=picker("careerPath","경력경로",db.paths.map(p=>[p.id,p.name]),activePath);
+ if(!path)return '<p class="empty">경력경로를 등록하고 단계별 교육과정을 편성하세요.</p>';
+ const body='<div class="filters">'+choices+button("경로 수정","editPath",path.id)+'</div><p class="ld-context">목표 직무 · '+esc(path.target)+'</p>'+
+ tbl(["단계","과정","구분","교육시간","학점","관리"],path.steps.map(r=>{const c=course(r.course);return [esc(r.stage),esc(c?.name||"과정 미등록"),r.required?"필수":"선택",esc(c?.hours??0)+"시간",esc(c?.credit??0)+"학점",button("편성 수정","pathStep",r.id)]}));
+ const assigned=db.pathAssignments.filter(a=>a.path===path.id);
+ return section("단계별 교육과정",body,button("과정 편성","pathStep"))+section("적용 직원",tbl(["직원","필수과정 이수","개인 이력"],assigned.map(a=>{const rows=learningRecords(a.person),required=path.steps.filter(r=>r.required);return [esc(a.person),required.filter(r=>stepState(rows,r.course)[0]==="수료").length+" / "+required.length,button("이력 보기","openProfile",a.person)]})));
+}
+function languageHistory(person){
+ const records=db.languageRecords.filter(r=>r.person===person).sort((a,b)=>b.date.localeCompare(a.date));
+ return tbl(["기록일","언어","목표 수준","시험·평가","성적·수준","응시일"],records.map(r=>[button(r.date,"languageRecord",r.id),esc(r.language),esc(r.target||"—"),esc(r.exam||"—"),esc(r.score||"—"),esc(r.testDate||"—")]));
+}
+function languageScreen(){
+ const catalog=db.courses.filter(c=>c.kind==="어학");
+ const rows=learningRecords(activeEmployee).filter(e=>course(session(e.session).course).kind==="어학");
+ return section("어학교육 과정",tbl(["과정","언어","목표 수준","교육시간","운영"],catalog.map(c=>[button(c.name,"course",c.id),esc(c.language||"—"),esc(c.languageLevel||"—"),esc(c.hours)+"시간",button("회차 개설","scheduleCourse",c.id)])))+
+ '<div class="filters">'+employeePicker()+button("개인 이력 보기","openProfile",activeEmployee)+'</div>'+
+ section("어학 목표·평가 이력",languageHistory(activeEmployee),button("목표·성적 기록","languageRecord"))+
+ section("어학 수강이력",tbl(["회차 시작일","교육과정","상태","수료일"],rows.map(e=>{const s=session(e.session);return [esc(s.date),button(course(s.course).name,"enrollment",e.id),tag(e.status,e.status==="수료"?"done":"plan"),esc(e.completed||"—")]})),button("어학 과정 배정","chooseLanguage"));
+}
+function applyEmployeePath(person,id){
+ db.pathAssignments=db.pathAssignments.filter(a=>a.person!==person);
+ if(id)db.pathAssignments.push({person,path:id});
+}
+function careerAction(action,id){
+ const person=activeEmployee,path=currentPath();
+ if(action==="openProfile"){activeEmployee=id;go("profile");return}
+ if(action==="profileEnrollment"){edit("enrollment","",{person,status:"수료"});return}
+ if(action==="languageCourse"){edit("course","",{kind:"어학",area:"선택",skill:"외국어 소통"});return}
+ if(action==="editPath"){
+  const record=db.paths.find(x=>x.id===id);
+  openForm(record?"경력경로 수정":"경력경로 등록",[F("name","경력경로명"),F("target","목표 직무"),sel("track","성장 방향",trackNames)],record||{},d=>{
+   if(db.paths.some(p=>p.name===d.name&&p.id!==id))throw Error("같은 이름의 경력경로가 있습니다.");
+   const key=record?.id||uid();upsert("paths",{...d,id:key,steps:record?.steps||[]});activePath=key;
+  });return;
+ }
+ if(action==="pathStep"){
+  const record=path?.steps.find(x=>x.id===id);
+  if(!path)return;
+  const fields=[F("stage","단계명"),sel("course","교육과정",courseOpts()),sel("type","이수 구분",["필수","선택"]),num("position","표시 순서",path.steps.length+1)];
+  if(record)fields.push(sel("operation","편성 관리",["유지","이 경로에서 제외"]));
+  openForm("단계별 과정 편성",fields,record?{...record,type:record.required?"필수":"선택",position:path.steps.indexOf(record)+1}:{},d=>{
+   const steps=path.steps.filter(r=>r.id!==id);
+   if(d.operation!=="이 경로에서 제외"){
+    if(steps.some(r=>r.course===d.course))throw Error("이미 편성된 과정입니다.");
+    const n=Number(d.position);if(!Number.isInteger(n)||n<1||n>steps.length+1)throw Error("표시 순서를 1부터 "+(steps.length+1)+" 사이로 입력하세요.");
+    steps.splice(n-1,0,{id:id||uid(),stage:d.stage,course:d.course,required:d.type==="필수"});
+   }
+   db.paths.find(p=>p.id===path.id).steps=steps;
+  });return;
+ }
+ if(action==="careerEvent"||action==="languageRecord"){
+  const isJob=action==="careerEvent",table=isJob?"careerEvents":"languageRecords",record=db[table].find(r=>r.id===id);
+  const fields=isJob?[date("date","적용일"),F("team","부서"),F("job","직무·역할"),txt("memo","담당 업무")]:
+   [date("date","기록일"),F("language","언어"),F("target","목표 수준","text",[],"",false),F("exam","시험·평가명","text",[],"",false),F("score","성적·수준","text",[],"",false),date("testDate","응시일","",false)];
+  openForm(person+(isJob?" · 직무·경력":" · 어학 목표·평가"),fields,record||{},d=>{
+   if(!isJob){if(!d.target&&!d.score)throw Error("목표 수준 또는 성적을 입력하세요.");if((d.score||d.exam||d.testDate)&&!(d.exam&&d.score&&d.testDate))throw Error("평가 기록에는 시험명, 성적, 응시일을 함께 입력하세요.")}
+   upsert(table,{...d,person,id:id||uid()});
+  });return;
+ }
+ if(action==="chooseLanguage"){
+  const courses=db.courses.filter(c=>c.kind==="어학");
+  showList(person+" · 어학 과정 선택",tbl(["과정","배정"],courses.map(c=>[esc(c.name),button("회차 선택","pathEnroll",c.id)])));return;
+ }
+ if(action==="pathEnroll"){
+  const choices=db.sessions.filter(s=>s.course===id&&eligibleSession(s)&&!db.enroll.some(e=>e.session===s.id&&e.person===person));
+  if(!choices.length){showList("교육 회차 선택",'<p class="note">추가 배정할 수 있는 승인 회차가 없습니다.</p>'+button("회차 편성","scheduleCourse",id));return}
+  const skill=db.competencies.find(c=>c.person===person),latest=db.careerEvents.filter(r=>r.person===person&&r.date<=today).sort((a,b)=>b.date.localeCompare(a.date))[0];
+  openForm(person+" · "+course(id).name,[sel("session","교육 회차",sessionOpts(choices)),F("team","부서")],{team:latest?.team||skill?.team||""},d=>{
+   if(!eligibleSession(session(d.session))||db.enroll.some(e=>e.session===d.session&&e.person===person))throw Error("이 회차에 배정할 수 없습니다.");
+   upsert("enroll",{id:uid(),...d,person,status:"미이수",progress:"",asof:"",completed:"",proof:"",evidence:"",creditOverride:"",awardedCredit:null,reason:""});
+  });return;
+ }
+}
+
+const trackNames=["일반관리자","직무전문가"];
+const learnerScreens=["myPath","mySkills","apply","myPlan","myRequests"];
+const learnerView=()=>learnerScreens.includes(page);
+const demoStaff=registeredPeople();
+let learner=sessionStorage.getItem("ld-public-demo-learner");
+if(!demoStaff.includes(learner))learner=demoStaff[demoStaff.length-1];
+let catalogKind="",catalogCourse="";
+function initializeApplications(){
+ db.applications??=[];
+ for(const p of db.paths){
+  if(!p.track&&p.id==="path-recruit")p.track="일반관리자";
+  if(!p.track&&p.id==="path-ops")p.track="직무전문가";
+ }
+ if(!db.trackTemplatesAdded){
+  const templates=[
+   ["general-management","일반관리자","팀 운영과 리더십","팀장",[["c1","기초 · 성과관리"],["c2","심화 · 팀 운영"]]],
+   ["functional-expert","직무전문가","직무 전문성 심화","직무전문가",[["c7","기초 · 산업 이해"],["c4","심화 · 공정 이해"]]]
+  ];
+  for(const [id,track,name,target,items] of templates){
+   if(!db.paths.some(p=>p.track===track))db.paths.push({id,track,name,target,steps:items.filter(([cid])=>course(cid)).map(([cid,stage])=>({id:id+cid,course:cid,stage,required:true}))});
+  }
+  db.trackTemplatesAdded=true;
+ }
+}
+initializeApplications();
+if(!activePath)activePath=db.paths[0]?.id||"";
+const openIntake=s=>s&&eligibleSession(s)&&s.intake==="접수 중";
+const learnerEnrollment=(person,sid)=>db.enroll.find(e=>e.session===sid&&e.person===person);
+const pendingRequest=(person,sid)=>db.applications.find(a=>a.person===person&&a.session===sid&&a.status==="승인 대기");
+function myPathScreen(){
+ const path=assignedPath(learner),rows=learningRecords(learner);
+ const tracks='<div class="track-options">'+trackNames.map((t,i)=>'<div><h3>'+t+'</h3><p>'+(i?"직무 지식과 기술을 심화하고 현업 문제를 해결합니다.":"팀을 이끌고 구성원의 성장과 성과를 관리합니다.")+'</p>'+button(path?.track===t?"경로 확인·변경":"이 방향 선택","chooseTrack",t)+'</div>').join("")+'</div>';
+ if(!path)return section("나의 성장 방향",tracks)+'<p class="empty">성장 방향과 경력경로를 선택하면 필요한 교육과정이 표시됩니다.</p>';
+ const needs=path.steps.filter(s=>s.required&&stepState(rows,s.course)[0]!=="수료").length;
+ const plan=path.steps.map(step=>{
+  const c=course(step.course),[state,color]=stepState(rows,step.course);
+  const waiting=db.applications.some(a=>a.person===learner&&a.status==="승인 대기"&&session(a.session)?.course===step.course);
+  const status=state==="미이수"&&waiting?"승인 대기":state;
+  return [esc(step.stage),esc(c?.name||"과정 미등록"),step.required?"필수":"선택",tag(status,color),status==="미이수"?(openSlots().some(s=>s.course===step.course)?button("모집 회차 보기","applyCourse",step.course):"개설 대기"):status==="승인 대기"?button("신청 확인","go","myRequests"):"—"];
+ });
+ return section("나의 성장 방향",tracks)+section(esc(path.name),'<p class="ld-context">'+esc(path.track||"기존 경로")+' · 목표 직무 '+esc(path.target)+' · 남은 필수과정 '+needs+'개</p>'+tbl(["단계","교육과정","구분","나의 상태","신청"],plan));
+}
+function applicationCatalog(){
+ const path=assignedPath(learner);
+ const sessions=openSlots().filter(s=>course(s.course)&&(!catalogKind||(catalogKind==="어학"?course(s.course).kind==="어학":course(s.course).kind!=="어학"))&&(!catalogCourse||s.course===catalogCourse)).sort((a,b)=>a.date.localeCompare(b.date));
+ const filters='<div class="filters">'+picker("catalogKind","교육 구분",[["","전체"],["일반","일반 교육"],["어학","어학교육"]],catalogKind)+(catalogCourse?esc(course(catalogCourse)?.name)+" "+button("전체 과정 보기","clearCatalog"):"")+'</div>';
+ const rows=sessions.map(s=>{
+  const c=course(s.course),step=path?.steps.find(r=>r.course===c.id),enrolled=learnerEnrollment(learner,s.id),pending=pendingRequest(learner,s.id);
+  const detail=[c.name,c.kind==="어학"?[c.language,c.languageLevel].filter(Boolean).join(" · "):""].filter(Boolean).map(esc).join("<br>");
+  return [detail,esc(c.kind),step?(step.required?"경로 필수":"경로 선택"):"—",esc(s.date)+(s.end!==s.date?" ~ "+esc(s.end):""),esc(s.mode),enrolled?tag(enrolled.status==="수료"?"수료":"수강 배정","done"):pending?tag("승인 대기"):button("신청하기","requestSeat",s.id),enrolled?.status==="수료"?"—":button("계획에 담기","planAdd",s.id)];
+ });
+ return section("신청 가능한 교육",filters+(rows.length?tbl(["과정","구분","경력경로","교육 일정","방식","신청","이수계획"],rows):'<p class="empty">현재 접수 중인 회차가 없습니다.</p>'));
+}
+function requestTable(manager){
+ const list=db.applications.filter(a=>manager||a.person===learner).slice().reverse();
+ const rows=list.map(a=>{
+  const s=session(a.session),c=course(s?.course),pending=a.status==="승인 대기";
+  return [esc(a.date),...(manager?[esc(a.person),esc(a.team)]:[]),esc(c?.name||a.external?.name),esc(s?.date||a.external?.start),esc(a.reason||"—"),tag(a.status,a.status==="승인"?"done":"plan"),esc(a.note||"—"),pending?(manager?button("심사","reviewRequest",a.id):button("신청 취소","withdrawRequest",a.id)):"—"];
+ });
+ return section(manager?"직원 교육신청 목록":"나의 교육신청 내역",rows.length?tbl(["신청일",...(manager?["직원","부서"]:[]),"과정","교육 시작일","신청 사유","상태","처리 메모","관리"],rows):'<p class="empty">접수된 교육신청이 없습니다.</p>');
+}
+function applicationAction(action,id){
+ if(action==="clearCatalog"){catalogCourse="";catalogKind="";render();return}
+ if(action==="applyCourse"){go("apply");catalogCourse=id;render();return}
+ if(action==="chooseTrack"){
+  const eligible=db.paths.filter(p=>p.track===id);
+  if(!eligible.length){toast("등록된 경력경로가 없습니다.");return}
+  openForm(learner+" · "+id+" 경로 선택",[sel("path","나의 경력경로",eligible.map(p=>[p.id,p.name+" · "+p.target]))],{path:assignedPath(learner)?.id},d=>applyEmployeePath(learner,d.path));return;
+ }
+ if(action==="requestSeat"){
+  const s=session(id),c=course(s?.course);
+  if(!openIntake(s)||!c){toast("접수가 종료된 회차입니다.");return}
+  const team=db.careerEvents.filter(e=>e.person===learner&&e.date<=today).sort((a,b)=>b.date.localeCompare(a.date))[0]?.team||db.competencies.find(e=>e.person===learner)?.team;
+  openForm(learner+" · "+c.name+" 신청",[F("team","부서"),txt("reason","신청 사유")],{team:team||""},d=>{
+   if(!openIntake(session(id))||learnerEnrollment(learner,id)||pendingRequest(learner,id))throw Error("이미 신청했거나 접수가 끝난 회차입니다.");
+   db.applications.push({id:uid(),person:learner,session:id,team:d.team,reason:d.reason,date:today,status:"승인 대기",note:""});
+  });return;
+ }
+ const request=db.applications.find(r=>r.id===id);
+ if(!request||request.status!=="승인 대기"){toast("이미 처리한 신청입니다.");return}
+ if(action==="withdrawRequest"&&request.person===learner){
+  openForm("교육신청 취소",[sel("confirm","신청 과정",[[id,request.external?.name||course(session(request.session).course).name]])],{},()=>{db.applications.find(r=>r.id===id).status="신청 취소"});return;
+ }
+ if(action==="reviewRequest"){
+  const ext=request.external;
+  const detail=ext?[F("info","외부교육 상세","text",[],[ext.provider,ext.start+" ~ "+ext.end,ext.hours+"시간",ext.area,"예상 "+Number(ext.cost).toLocaleString()+"원"].join(" · ")),num("credit","승인 인정학점",+ext.credit)]:[];
+  openForm(request.person+" · "+(ext?.name||course(session(request.session).course).name),[...detail,sel("decision","처리 결과",["승인","반려"]),txt("note","처리 메모 (반려 시 필수)")],{},d=>{
+   const a=db.applications.find(r=>r.id===id),s=session(a.session);
+   if(a.status!=="승인 대기")throw Error("이미 처리한 신청입니다.");
+   if(d.decision==="반려"&&!d.note)throw Error("반려 사유를 입력하세요.");
+   if(d.decision==="승인"&&a.external&&!a.session)enrollExternal(a,d);
+   if(d.decision==="승인"&&!a.external&&(!s||!eligibleSession(s)))throw Error("승인된 운영계획과 교육 종료일을 확인하세요.");
+   if(d.decision==="승인"&&!learnerEnrollment(a.person,a.session))db.enroll.push({id:uid(),session:a.session,person:a.person,team:a.team,status:"미이수",progress:"",asof:"",completed:"",proof:"",evidence:"",creditOverride:"",awardedCredit:null,reason:""});
+   a.status=d.decision;a.note=d.note;a.reviewed=today;
+  });if(ext)$("#form").elements.info.readOnly=true;
+ }
+}
+
+db.selfRatings??=[];db.studyPlans??=[];db.annualBudgets??=[];
+let studyYear=Number(today.slice(0,4));
+const levels=[1,2,3,4,5];
+const planFor=(person,y)=>db.studyPlans.find(p=>p.person===person&&p.year===y);
+const editablePlan=p=>!p||["작성 중","보완 요청"].includes(p.status);
+const openSlots=()=>db.sessions.filter(s=>openIntake(s)&&!s.privatePerson).sort((a,b)=>a.date.localeCompare(b.date));
+function assessmentPairs(){
+ const official=db.competencies.filter(r=>r.person===learner),self=db.selfRatings.filter(r=>r.person===learner);
+ return [...new Set([...official,...self].map(r=>r.skill))].map(skill=>({skill,official:official.find(r=>r.skill===skill),self:self.find(r=>r.skill===skill)}));
+}
+function recommendedSlots(){
+ const pairs=assessmentPairs(),records=learningRecords(learner),path=assignedPath(learner);
+ return openSlots().flatMap(s=>{
+  const c=course(s.course);
+  if(!c||records.some(e=>session(e.session).course===c.id&&e.status==="수료"))return [];
+  const pair=pairs.find(p=>p.skill===c.skill),why=[];
+  for(const [label,r] of [["역량평가",pair?.official],["자기평가",pair?.self]]){
+   if(r&&+r.current<+r.target&&+c.level>+r.current&&+c.level<=+r.target)why.push(label+" "+r.current+" → 목표 "+r.target);
+  }
+  if(path?.steps.some(t=>t.course===c.id&&t.required))why.push("경력경로 필수");
+  return why.length?[{s,c,why}]:[];
+ });
+}
+function assessmentScreen(){
+ const rows=assessmentPairs().map(p=>[esc(p.skill),p.official?esc(p.official.current+" / "+p.official.target):"미평가",esc(p.official?.assessed||"—"),p.self?esc(p.self.current+" / "+p.self.target):"미입력",esc(p.self?.date||"—"),button("자기평가","selfRate",p.skill)]);
+ const recs=recommendedSlots().map(({s,c,why})=>[esc(c.name),esc(c.skill||"—"),esc(c.level||"—"),esc(why.join(" · ")),esc(s.date),esc(c.credit)+"학점",button("계획에 담기","planAdd",s.id)]);
+ return section("역량별 현재 수준 / 목표 수준",tbl(["역량","역량평가","평가일","자기평가","입력일","관리"],rows),button("자기평가 등록","selfRate"))+
+ section("추천 개설 과정",recs.length?tbl(["과정","역량","도달 수준","추천 근거","시작일","학점","이수계획"],recs):'<p class="empty">현재 평가 또는 경력경로에 맞는 모집 회차가 없습니다.</p>',button("전체 개설 과정","go","apply"));
+}
+function creditCheck(p){
+ const completed=db.enroll.filter(e=>e.person===p.person&&e.status==="수료"&&Number(e.completed?.slice(0,4))===p.year);
+ const planned=p.items.map(i=>session(i.session)).filter(Boolean);
+ const goals=db.goals.filter(g=>g.person===p.person&&Number(g.year)===p.year);
+ const buckets=[...new Set([...goals.map(g=>g.area),...completed.map(e=>course(session(e.session).course).area),...planned.map(s=>course(s.course).area)])];
+ return buckets.map(area=>{
+  const g=goals.find(x=>x.area===area),actual=sum(completed.filter(e=>course(session(e.session).course).area===area),earned);
+  const expected=sum(planned.filter(s=>course(s.course).area===area&&learnerEnrollment(p.person,s.id)?.status!=="수료"),s=>course(s.course).credit);
+  return {area,target:g?Number(g.target):null,actual,expected,gap:g?Math.max(0,Number(g.target)-actual-expected):null};
+ });
+}
+function planIssues(p){
+ const issues=[];
+ for(const item of p.items){
+  const s=session(item.session),e=learnerEnrollment(p.person,item.session);
+  if(!s||Number(s.end.slice(0,4))!==p.year||(!e&&!openIntake(s)))issues.push((course(s?.course)?.name||"회차")+" · 회차 일정 또는 접수 상태 확인");
+ }
+ return issues;
+}
+function creditSummary(p){
+ const checks=creditCheck(p);
+ return checks.length?tbl(["학점 영역","목표","취득","추가 예정","예상 합계","확인"],checks.map(v=>[esc(v.area),v.target??"미설정",v.actual,v.expected,v.actual+v.expected,v.gap===null?"목표 미설정":v.gap?tag(v.gap+"학점 부족","late"):tag("목표 충족","done")])):'<p class="empty">등록된 목표학점과 이수 내역이 없습니다.</p>';
+}
+function planRows(p,manager){
+ return tbl(["교육과정","이수 예정일","학점","진행 상태","계획 메모","관리"],p.items.map(i=>{
+  const s=session(i.session),c=course(s?.course),e=learnerEnrollment(p.person,i.session),ap=pendingRequest(p.person,i.session);
+  const state=e?(e.status==="미이수"&&eligibleSession(s)?"배정됨":e.status):ap?"신청 대기":openIntake(s)?"신청 가능":"접수 종료";
+  const action=manager?"—":editablePlan(p)?button("수정·제외","planItem",i.session):p.status==="확정"&&!e&&!ap&&openIntake(s)?button("교육 신청","requestSeat",i.session):"—";
+  return [esc(c?.name||"회차 확인 필요"),esc(i.due),esc(c?.credit??"—"),tag(state,e?.status==="수료"?"done":"plan"),esc(i.memo||"—"),action];
+ }));
+}
+function myPlanScreen(){
+ const years=[...new Set([studyYear,BASE_YEAR,...db.sessions.map(s=>Number(s.end.slice(0,4))),...db.studyPlans.map(p=>p.year)])].sort();
+ const p=planFor(learner,studyYear)||{person:learner,year:studyYear,status:"작성 중",items:[]};
+ const bar='<div class="filters">'+picker("studyYear","계획 연도",years.map(y=>[String(y),y+"년"]),String(studyYear))+tag(p.status)+(p.note?'<span>담당자 메모 · '+esc(p.note)+'</span>':'')+'</div>';
+ return bar+section("연간 이수계획",planRows(p,false),editablePlan(p)?button("개설 과정 찾기","go","apply"):"")+
+ section("예상 이수학점",creditSummary(p),p.items.length&&editablePlan(p)?button("담당자에게 제출","submitPlan"):"");
+}
+function planReviewScreen(){
+ const plans=db.studyPlans.filter(p=>p.status!=="작성 중").slice().sort((a,b)=>(b.submitted||"").localeCompare(a.submitted||""));
+ return section("제출된 개인별 이수계획",tbl(["연도","직원","계획 회차","학점 점검","상태","확인"],plans.map(p=>{
+  const check=creditCheck(p),issues=planIssues(p);
+  const summary=[...check.filter(v=>v.gap===null||v.gap>0).map(v=>v.area+" "+(v.gap===null?"목표 미설정":v.gap+"학점 부족")),...issues];
+  return [p.year,esc(p.person),p.items.length,esc(summary.join(" · ")||"목표 충족"),tag(p.status),button("계획 검토","viewPlan",p.id)];
+ })));
+}
+function personalTranscript(){
+ const rows=learningRecords(learner);
+ return section("나의 수강·이수현황",tbl(["교육과정","운영방식","교육일","이수 상태","취득학점","수료 근거","관리"],rows.map(e=>{
+  const s=session(e.session),c=course(s.course),ext=["외부 위탁","외부 온라인"].includes(s.mode);
+  return [esc(c.name),esc(s.mode),esc(s.date),tag(e.status,e.status==="수료"?"done":"plan"),e.status==="수료"?earned(e):"—",esc(e.proof||"—"),ext?button("이수 결과 등록","externalResult",e.id):"—"];
+ })));
+}
+function studyAction(action,id){
+ if(action==="selfRate"){
+  const previous=db.selfRatings.find(r=>r.person===learner&&r.skill===id);
+  openForm("나의 역량 수준",[sel("skill","역량",id?[id]:capabilities),sel("current","자기평가 수준",levels),sel("target","개인 목표 수준",levels,3),txt("memo","평가 근거")],previous||{skill:id},d=>{
+   const old=db.selfRatings.find(r=>r.person===learner&&r.skill===d.skill);
+   upsert("selfRatings",{...d,person:learner,date:today,id:old?.id||uid()});
+  });return;
+ }
+ if(action==="planAdd"||action==="planItem"){
+  const s=session(id),y=action==="planItem"?studyYear:Number(s.end.slice(0,4));
+  const plan=planFor(learner,y),item=plan?.items.find(i=>i.session===id);
+  if(learnerEnrollment(learner,id)?.status==="수료"&&!item){toast("이미 수료한 회차입니다.");return}
+  if(!editablePlan(plan)){toast(y+"년 계획은 검토 중이거나 확정되었습니다.");return}
+  const options=item?[sel("operation","관리",["유지","계획에서 제외"])]:[];
+  openForm(course(s.course).name+" · "+y+"년 이수계획",[date("due","이수 예정일",s.end),txt("memo","학습 목표·활용 계획"),...options],item||{},d=>{
+   const p=planFor(learner,y)||{id:uid(),person:learner,year:y,status:"작성 중",items:[]};
+   if(!editablePlan(p))throw Error("편집할 수 없는 계획입니다.");
+   if(d.operation==="계획에서 제외"){p.items=p.items.filter(i=>i.session!==id)}
+   else {
+    if((!item&&!openIntake(s))||d.due<s.date||d.due>s.end||Number(d.due.slice(0,4))!==y)throw Error("접수 상태와 교육 기간 내 이수 예정일을 확인하세요.");
+    const next={session:id,due:d.due,memo:d.memo};p.items=p.items.filter(i=>i.session!==id).concat(next).sort((a,b)=>a.due.localeCompare(b.due));
+   }
+   upsert("studyPlans",p);studyYear=y;
+  });return;
+ }
+ if(action==="submitPlan"){
+  const p=planFor(learner,studyYear);if(!p||!p.items.length||!editablePlan(p))return;
+  openForm(studyYear+"년 계획 제출",[sel("confirm","제출할 내용",[[p.id,p.items.length+"개 회차 · 담당자 학점 검토 요청"]])],{},()=>{
+   const current=planFor(learner,studyYear),issues=planIssues(current);if(issues.length)throw Error(issues.join(" / "));
+   current.status="검토 대기";current.submitted=today;
+  });return;
+ }
+ if(action==="viewPlan"||action==="decidePlan"){
+  const p=db.studyPlans.find(p=>p.id===id);if(!p)return;
+  if(action==="viewPlan"){
+   showList(p.person+" · "+p.year+"년 이수계획",planRows(p,true)+creditSummary(p)+'<p class="ld-context">'+esc([p.note,...planIssues(p)].filter(Boolean).join(" · "))+'</p>'+(p.status==="검토 대기"?button("확정 또는 보완 요청","decidePlan",p.id):""));return;
+  }
+  openForm("개인 이수계획 검토",[sel("decision","검토 결과",["확정","보완 요청"]),txt("note","검토 의견")],{},d=>{
+   const plan=db.studyPlans.find(x=>x.id===id),checks=creditCheck(plan);
+   if(plan.status!=="검토 대기")throw Error("이미 처리한 계획입니다.");
+   if(d.decision==="확정"&&planIssues(plan).length)throw Error("회차 변경 사항을 반영하도록 보완 요청하세요.");
+   if((d.decision==="보완 요청"||checks.some(r=>r.gap!==0))&&!d.note)throw Error("보완 사유 또는 학점 기준 예외 확정 사유를 입력하세요.");
+   Object.assign(plan,{status:d.decision,note:d.note,reviewed:today,reviewCredits:checks});
+  });return;
+ }
+ if(action==="outsideApply"){
+  openForm("외부교육 신청",[F("name","외부 과정명"),F("provider","교육기관"),sel("area","학점 영역",areas),date("start","시작일"),date("end","종료일"),num("hours","교육시간",1),num("credit","신청 학점",0),num("cost","예상 교육비 (원)",0),F("team","부서"),txt("reason","신청 사유")],{team:db.competencies.find(r=>r.person===learner)?.team||""},d=>{
+   if(d.end<d.start||d.end<today||+d.hours<=0)throw Error("교육 기간과 시간을 확인하세요.");
+   if(db.applications.some(a=>a.person===learner&&["승인","승인 대기"].includes(a.status)&&a.external?.name===d.name&&a.external?.provider===d.provider&&a.external?.start===d.start))throw Error("같은 외부교육을 이미 신청했습니다.");
+   db.applications.push({id:uid(),person:learner,team:d.team,reason:d.reason,date:today,status:"승인 대기",note:"",external:d,session:""});
+  });return;
+ }
+ if(action==="externalResult"){
+  const e=db.enroll.find(e=>e.id===id&&e.person===learner),s=e&&session(e.session);
+  if(!s||!["외부 위탁","외부 온라인"].includes(s.mode))return;
+  openForm("외부교육 이수 결과",[sel("status","이수 상태",["미이수","진행 중","수료"]),date("completed","수료일","",false),txt("proof","수료 근거·증빙번호"),F("evidence","수료증 링크","url",[],"",false)],e,d=>{
+   if(d.status==="수료"&&(!d.proof||!d.completed||d.completed<s.date||d.completed>today))throw Error("교육 시작일부터 오늘까지의 수료일과 증빙 근거를 입력하세요.");
+   if(d.evidence&&!safeUrl(d.evidence))throw Error("수료증 링크를 확인하세요.");
+   const record=db.enroll.find(x=>x.id===id);Object.assign(record,d,{completed:d.status==="수료"?d.completed:"",awardedCredit:d.status==="수료"?(record.awardedCredit??+course(s.course).credit):null});
+  });return;
+ }
+ if(action==="annualBudget"){
+  const rec=db.annualBudgets.find(b=>b.year===year);
+  openForm(year+"년 교육예산 설정",[num("amount","승인된 연간 교육예산 (원)",0)],rec||{},d=>{
+   db.annualBudgets=db.annualBudgets.filter(b=>b.year!==year);db.annualBudgets.push({year,amount:Number(d.amount)});
+  });return;
+ }
+}
+function enrollExternal(a,d){
+ const x=a.external,cid=uid(),sid=uid();
+ db.courses.push({id:cid,name:x.name,kind:"외부교육",area:x.area,hours:+x.hours,credit:+d.credit,goal:a.reason,outline:"",criteria:"수료증 등 증빙 확인",skill:"",level:1});
+ db.sessions.push({id:sid,course:cid,date:x.start,end:x.end,status:"예정",approval:"승인",intake:"접수 종료",privatePerson:a.person,mode:"외부 위탁",team:a.team,provider:x.provider,budget:+x.cost,cost:0,trainer:"",url:"",settle:"정산 예정"});
+ a.session=sid;
+}
+function budgetRows(){
+ const schedule=ss().map(s=>({key:'s/'+s.id,name:course(s.course)?.name||"미지정 과정",month:Number(s.date.slice(5,7)),category:s.mode||"교육 회차",planned:Number(s.budget)||0,spent:Number(s.cost)||0}));
+ const extra=(db.budgetLines||[]).filter(x=>x.year===year).map(x=>({key:'p/'+x.id,name:x.name,month:x.month,category:x.category,planned:x.units*x.price,spent:null}));
+ return schedule.concat(extra).sort((a,b)=>a.month-b.month||a.name.localeCompare(b.name,"ko"));
+}
+function budgetScreen(){
+ const rows=budgetRows(),approved=db.annualBudgets.find(b=>b.year===year)?.amount,planned=sum(rows,x=>x.planned),spent=sum(rows,x=>x.spent);
+ const won=n=>n==null?"미입력":dashNumber(n)+"원";
+ const totals=[["승인 예산",won(approved)],["편성액",won(planned)],["편성 가능 잔액",won(approved==null?null:approved-planned)],["집행액",won(spent)]];
+ const months=Array.from({length:12},(_,i)=>sum(rows.filter(r=>r.month===i+1),r=>r.planned)),max=Math.max(1,...months);
+ const graph='<div class="ld-budget-months">'+months.map((v,i)=>`<div><span>${i+1}월</span><progress aria-label="${i+1}월 편성액" value="${v}" max="${max}"></progress><b>${won(v)}</b></div>`).join("")+'</div>';
+ return '<div class="ld-budget-total">'+totals.map(([k,v])=>`<div><span>${k}</span><strong>${v}</strong></div>`).join("")+'</div>'+section("월별 예산 편성",graph,button("승인 예산 입력","annualBudget"))+section("예산 명세",tbl(["월","교육과정 · 항목","편성 구분","편성액","집행액","관리"],rows.map(r=>[r.month+"월",esc(r.name),esc(r.category),won(r.planned),r.spent===null?"—":won(r.spent),button("수정","budgetEntry",r.key)])));
+}
+function budgetEntry(id){
+ if(id.startsWith("s/")){
+  const s=session(id.slice(2));openForm(course(s.course)?.name+" · 회차 예산",[num("amount","회차 편성액 (원)")],{amount:s.budget},d=>{const amount=+d.amount;if(!Number.isSafeInteger(amount)||amount<0)throw Error("편성액을 원 단위로 입력해 주세요.");s.budget=amount;});return;
+ }
+ const existing=(db.budgetLines||[]).find(x=>x.id===id.slice(2));
+ const fields=[F("name","교육과정 또는 예산 항목"),sel("category","비용 구분",["수강료","강사료","교재·콘텐츠","장소·운영비","기타"]),sel("month","편성 월",Array.from({length:12},(_,i)=>[i+1,(i+1)+"월"])),num("units","수량 (명·회·건)",1),num("price","단가 (원)",0)];
+ openForm(year+"년 교육예산 항목",fields,existing||{},d=>{
+  const units=Number(d.units),price=Number(d.price),month=Number(d.month);
+  if(!d.name.trim()||!Number.isSafeInteger(units)||units<1||!Number.isSafeInteger(price)||price<0||!Number.isSafeInteger(units*price)||!Number.isInteger(month)||month<1||month>12)throw Error("항목명과 정수 수량·단가를 확인해 주세요.");
+  db.budgetLines??=[];upsert("budgetLines",{id:existing?.id||uid(),year,month,name:d.name.trim(),category:d.category,units,price});
+ });
+}
+
+function mainScreen(){
+ if(page==="budgetPlan")return budgetScreen();
+ if(page==="mySkills")return assessmentScreen();
+ if(page==="myPlan")return myPlanScreen();
+ if(page==="planReview")return planReviewScreen();
+ if(page==="myPath")return myPathScreen();
+ if(page==="apply")return applicationCatalog();
+ if(page==="myRequests")return requestTable(false)+personalTranscript();
+ if(page==="applications")return requestTable(true);
+ if(page==="profile")return employeeProfile();
+ if(page==="career")return pathScreen();
+ if(page==="language")return languageScreen();
+ if(page==="framework")return frameworkScreen();
+ const list=ss(),ev=db.evaluations.filter(v=>en().some(e=>e.id===v.enroll)),avg=(a,k)=>a.length?(sum(a,x=>x[k])/a.length).toFixed(1):"—";
+ if(page==="dashboard")return '<div class="db-overview">'+educationIndicators(list)+budgetIndicators(list)+'</div>'+monthScheduleChart(list)+dashboard(list);
+ if(page==="annual")return annualSchedule(list);
+ if(page==="sessions")return section("회차별 운영 현황",toolbar()+tbl(["교육과정","시작일","대상","운영방식","강사","진행 상태","승인","참여자"],sessionRows(list)),button("전년도 계획 불러오기","copy"));
+ if(page==="courses")return section("교육과정 목록",toolbar()+tbl(["과정명","교육구분","연계 역량","도달 수준","시간","학점","일정"],db.courses.filter(c=>fieldMatch(c.name,c.kind,c.skill)).map(c=>[button(c.name,"course",c.id),esc(c.kind),esc(c.skill||"—"),esc(c.level||"—"),esc(c.hours)+"시간",esc(c.credit),button("회차 편성","scheduleCourse",c.id)])));
+ if(page==="trainers")return section("강사 목록",toolbar("강사명 또는 전문분야 검색")+tbl(["강사명","구분","소속","전문분야","연간 편성","강의료"],db.trainers.filter(t=>fieldMatch(t.name,t.topic,t.org)).map(t=>[button(t.name,"instructor",t.id),esc(t.type),esc(t.org),esc(t.topic),list.filter(s=>s.trainer===t.id).length+"회",Number(t.fee).toLocaleString()+"원"])));
+ if(page==="needs")return section("부서별 교육니즈",toolbar()+tbl(["교육 요청","요청 부서","대상 인원","우선순위","검토 방향","상태","연결"],db.needs.filter(n=>fieldMatch(n.name,n.team,n.problem)).map(n=>[button(n.name,"need",n.id),esc(n.team),esc(n.count),esc(n.priority),esc(n.route),tag(n.status),n.course?button("회차 편성","scheduleCourse",n.course):n.route==="신규 개발"?button("개발 연결","fromNeed",n.id):button("계획 반영","planNeed",n.id)])));
+ if(page==="dev")return section("개발과정 목록",toolbar()+tbl(["과정명","교육 대상","교육목표","단계","과정 등록"],db.dev.filter(d=>fieldMatch(d.name,d.target)).map(d=>[button(d.name,"development",d.id),esc(d.target),esc(d.goal),tag(d.stage,d.stage==="승인"?"done":"plan"),d.course?button("등록 과정","course",d.course):d.stage==="승인"?button("과정 등록","fromDev",d.id):"승인 대기"])));
+ if(page==="outsource")return section("외주교육 계약·정산",toolbar()+tbl(["교육과정","기관","운영방식","예산","실집행","정산 상태","참여자"],list.filter(s=>s.mode!=="사내 집합"&&fieldMatch(course(s.course)?.name,s.provider)).map(s=>[button(course(s.course).name,"session",s.id),esc(s.provider||"미정"),esc(s.mode),Number(s.budget).toLocaleString()+"원",Number(s.cost).toLocaleString()+"원",tag(s.settle),button("참여자","roster",s.id)])));
+ if(["campus","mandatory","history"].includes(page)){
+ const h=page==="history",m=page==="mandatory";
+ const rows=(h?hist():en()).filter(e=>{const s=session(e.session),c=course(s.course);return (h|| (m?c.kind==="법정의무":s.mode==="외부 온라인"))&&relevant(e.person)&&fieldMatch(e.person,e.team,c.name,s.provider)});
+ const rowsData=rows.map(e=>{const s=session(e.session),c=course(s.course);const past=s.end<today&&e.status!=="수료";const url=safeUrl(s.url);return [button(e.person,"enrollment",e.id),esc(e.team),button(c.name,"session",s.id),...(h?[esc(e.completed),esc(s.mode),esc(c.hours)+"시간",earned(e)+"학점",esc(e.proof||"—")]:[esc(s.end),tag(past?"기한 경과":e.status,past?"late":e.status==="수료"?"done":"plan"),...(m?[esc(s.rule||"확인 필요"),esc(e.proof||"—")]:[e.progress===""?"진도 미제공":esc(e.progress)+"%",esc(e.asof||"—"),url?'<a rel="noopener noreferrer" target="_blank" href="'+esc(url)+'">기관 열기</a>':"링크 미등록"])])]});
+ return section(h?"직원별 교육이력":m?"의무교육 대상자":"외부 온라인교육 수강현황",toolbar("직원명 또는 과정명 검색",true)+tbl(["직원","부서","교육과정",...(h?["수료일","운영방식","시간","학점","수료 근거"]:["이수기한","이수 상태",...(m?["적용 근거","증빙"]:["기관 진도","기준일","수강 링크"])])],rowsData),h?button("엑셀용 CSV","export"):button("교육 회차 등록","session"));
+ }
+ if(page==="match"){const skills=db.competencies.filter(s=>relevant(s.person)&&fieldMatch(s.person,s.skill,s.job)).sort((a,b)=>gap(b)-gap(a));
+ return section("직원 역량과 추천 교육",toolbar("직원명·직무·역량 검색",true)+tbl(["직원","직무","역량","현재 / 목표","차이","추천 과정 · 배정"],skills.map(s=>{const rec=recommendations(s);return[button(s.person,"competency",s.id),esc(s.job),esc(s.skill),esc(s.current)+" / "+esc(s.target),tag(gap(s)?gap(s)+"단계":"목표 충족",gap(s)?"late":"done"),gap(s)?(rec.length?rec.map(c=>button(c.name,"matchCourse",s.id+"|"+c.id)).join("<br>"):"추천 가능한 미이수 과정 없음"):"—"]})));
+ }
+ if(page==="pip")return section("PIP 운영과정",toolbar("과정명·개선 과제 검색")+tbl(["개선이 필요한 업무","운영할 교육과정","대상","운영 방법","회차","현업 적용"],db.pip.filter(p=>+p.year===year&&fieldMatch(p.issue,course(p.course)?.name,p.target)).map(p=>[button(p.issue,"piprecord",p.id),esc(course(p.course)?.name),esc(p.target),esc(p.method),p.session?button(session(p.session)?.date||"회차","session",p.session):button("회차 편성","pipSession",p.id),esc(p.result||"확인 예정")])))+section("선택할 수 있는 과정 예시",tbl(["업무상 어려움","과정명","실습·현업 과제","확인 지표"],PIP_OPTIONS.map((p,i)=>[esc(p[1]),button(p[0],"pipOption",String(i)),esc(p[3]),esc(p[4])])));
+ if(page==="credits"){const rows=db.goals.filter(g=>+g.year===year&&relevant(g.person)&&fieldMatch(g.person,g.area)),keys=new Map(rows.map(g=>[g.person+"|"+g.area,g]));hist().filter(e=>relevant(e.person)&&fieldMatch(e.person,course(session(e.session).course).area)).forEach(e=>{const area=course(session(e.session).course).area,k=e.person+"|"+area;if(!keys.has(k))keys.set(k,{person:e.person,area,target:0})});
+ return section("개인별 학점 현황",toolbar("직원명 또는 영역 검색",true)+tbl(["직원","학점 영역","목표","취득","부족","이수내역"],Array.from(keys.values()).map(g=>{const n=sum(hist().filter(e=>e.person===g.person&&course(session(e.session).course).area===g.area),earned);return[esc(g.person),esc(g.area),g.id?button(g.target+"학점","goal",g.id):"미설정",n+"학점",g.id?Math.max(0,g.target-n)+"학점":"—",button("이력 보기","personHistory",g.person)]})));
+ }
+ if(page==="ratings")return section("강사별 평가 · 5점 척도",toolbar("강사명·전문분야 검색")+tbl(["강사","응답 수","전문성","설명","질의응답","피드백","평가 상세"],db.trainers.filter(t=>fieldMatch(t.name,t.topic)).map(t=>{const a=ev.filter(v=>v.trainer===t.id);return [esc(t.name),a.length,...["expert","explain","answer","feedback"].map(k=>avg(a,k)),button("응답 보기","trainerResponses",t.id)]})));
+ if(page==="evaluations")return section("회차별 교육평가 · 5점 척도",toolbar()+tbl(["교육과정","회차","응답 / 수료","응답률","목표달성","직무관련","난이도","실습시간","상세"],list.filter(s=>fieldMatch(course(s.course).name,s.team)).map(s=>{const es=en().filter(e=>e.session===s.id&&e.status==="수료"),a=ev.filter(v=>es.some(e=>e.id===v.enroll)),unique=new Map(a.map(v=>[v.enroll,v])),n=unique.size;return [esc(course(s.course).name),esc(s.date),n+" / "+es.length,es.length?Math.round(100*n/es.length)+"%":"—",...["goal","useful","level","practice"].map(k=>avg([...unique.values()],k)),button("응답 보기","sessionResponses",s.id)]})));
+}
+function safeUrl(v){try{const u=new URL(v);return ["https:","http:"].includes(u.protocol)?u.href:""}catch{return ""}}
+
+</script><script>"use strict";
+const opts=(arr,f)=>arr.map(v=>[v.id,f(v)]);
+const F=(key,label,type="text",options=[],defaultValue="",req=true)=>({key,label,type,options,defaultValue,req});
+const sel=(key,label,options,def="",req=true)=>F(key,label,"select",options,def,req);
+const txt=(key,label,req=false)=>F(key,label,"textarea",[],"",req);
+const num=(key,label,v=0)=>F(key,label,"number",[],v);
+const date=(key,label,v=today,req=true)=>F(key,label,"date",[],v,req);
+const blank=(a,label="미정")=>[["",label],...a];
+const courseOpts=()=>opts(db.courses,c=>c.name);
+const sessionOpts=(list=ss())=>opts([...list].sort((a,b)=>a.date.localeCompare(b.date)),s=>s.date+" · "+course(s.course).name);
+function toast(msg){$("#toast").textContent=msg;$("#toast").classList.add("show");clearTimeout(toast.timer);toast.timer=setTimeout(()=>$("#toast").classList.remove("show"),3200)}
+function openForm(title,fields,values,cb){
+ $("#modalTitle").textContent=title;$("#fields").innerHTML=fields.map(f=>{
+ const val=values[f.key]??f.defaultValue;const attr=' name="'+f.key+'" '+(f.req?"required":"");let input="";
+ if(f.type==="select"){input='<select'+attr+'>'+f.options.map(o=>{const [v,l]=Array.isArray(o)?o:[o,o];return '<option value="'+esc(v)+'" '+(String(val)===String(v)?"selected":"")+'>'+esc(l)+'</option>'}).join("")+'</select>'}
+ else if(f.type==="textarea")input='<textarea'+attr+'>'+esc(val)+'</textarea>';
+ else input='<input type="'+f.type+'"'+attr+' value="'+esc(val)+'" '+(f.type==="number"?'min="0" step="any"':'')+'>';
+ return '<label class="'+(f.type==="textarea"||["name","issue","course","session","enroll","url","task","metric"].includes(f.key)?"wide":"")+'">'+esc(f.label)+input+'</label>'}).join("");
+ $("#form").querySelector('[type="submit"]').hidden=false;$("#cancel").textContent="취소";saveAction=cb;const dlg=$("#dialog");if(!dlg.open)dlg.showModal();dlg.scrollTop=0;
+}
+function showList(title,html){$("#modalTitle").textContent=title;$("#fields").innerHTML='<div class="wide">'+html+'</div>';$("#form").querySelector('[type="submit"]').hidden=true;$("#cancel").textContent="닫기";if(!$("#dialog").open)$("#dialog").showModal()}
+let savedRevision=localStorage.getItem(storageKey);
+function persist(){
+ if(localStorage.getItem(storageKey)!==savedRevision)throw Error("다른 화면에서 변경한 내용이 있습니다. 새로고침 후 다시 시도하세요.");
+ const data=JSON.stringify(db);localStorage.setItem(storageKey,data);savedRevision=data;
+}
+function upsert(table,record){const a=db[table],idx=a.findIndex(x=>x.id===record.id);if(idx===-1)a.push(record);else a[idx]=record;}
+function edit(action,id="",preset={},hook){
+ const maps={course:["courses","교육과정"],session:["sessions","교육 회차"],enrollment:["enroll","교육 대상자·수료 기록"],need:["needs","교육니즈"],development:["dev","개발과정"],instructor:["trainers","강사"],evaluation:["evaluations","교육·강사 평가"],competency:["competencies","직원 역량"],goal:["goals","목표학점"],piprecord:["pip","PIP 운영과정"]};
+ const [table,title]=maps[action];const old=db[table].find(o=>o.id===id),v={...preset,...old};let f;
+ if(action==="course")f=[F("name","과정명"),sel("kind","교육구분",["직무","공통","리더십","법정의무","어학","외부교육","PIP"]),F("language","교육 언어","text",[],"",false),F("languageLevel","과정 목표 수준","text",[],"",false),sel("area","학점 영역",areas),sel("skill","연계 역량",[...new Set([...capabilities,...db.courses.map(c=>c.skill).filter(Boolean)])]),sel("level","도달 수준",[1,2,3,4,5],3),num("hours","교육시간",2),num("credit","인정학점",1),txt("goal","교육목표",true),txt("outline","교육 내용·실습"),txt("criteria","수료 기준"),txt("candidates","강사 후보")];
+ if(action==="instructor")f=[F("name","강사명"),sel("type","구분",["사내","외부"]),F("org","소속"),F("topic","전문분야"),num("fee","강의료 (원)")];
+ if(action==="session"){const subset=page==="mandatory"?db.courses.filter(c=>c.kind==="법정의무"):db.courses;
+ f=[sel("course","교육과정",opts(subset,c=>c.name)),date("date","시작일",year+"-12-01"),date("end","종료일·이수기한",year+"-12-01"),sel("mode","운영방식",modes,page==="campus"?"외부 온라인":page==="outsource"?"외부 위탁":modes[0]),sel("status","진행 상태",["예정","진행 중","종료"]),sel("approval","계획 승인",["작성 중","검토 중","승인"],"승인"),sel("intake","직원 교육신청",["접수 종료","접수 중"],"접수 종료"),sel("trainer","담당 강사",blank(opts(db.trainers,t=>t.name)),"",false),F("team","대상 부서","text",[],"전사"),F("provider","외부 교육기관","text",[],"",false),F("url","외부 수강 링크","url",[],"",false),F("contract","계약·위탁 유형","text",[],"",false),sel("settle","정산 상태",["정산 예정","정산 완료","해당 없음"],"해당 없음"),num("budget","계획 예산 (원)"),num("cost","실집행액 (원)"),txt("rule","의무교육 적용 근거·인정 기준"),F("audience","대상자 선정 기준","text",[],"",false),date("reviewDate","기준 확인일","",false)]}
+ if(action==="enrollment"){const choices=page==="campus"?ss().filter(s=>s.mode==="외부 온라인"):page==="mandatory"?ss().filter(s=>course(s.course).kind==="법정의무"):db.sessions;
+ const choicesWithCurrent=choices.slice();if(v.session&&!choices.some(s=>s.id===v.session)&&session(v.session))choicesWithCurrent.push(session(v.session));
+ if(!choicesWithCurrent.length){toast("먼저 해당 교육의 회차를 등록하세요.");return}
+ f=[sel("session","교육 회차",sessionOpts(choicesWithCurrent)),F("person","직원명"),F("team","부서"),sel("status","이수 상태",["미이수","진행 중","수료"],page==="history"?"수료":"미이수"),F("progress","기관 제공 진도율 (%)","number",[],"",false),date("asof","진도 기준일","",false),date("completed","수료일","",false),txt("proof","수료 근거 (명단·확인자·증빙번호)"),F("evidence","수료증 링크","url",[],"",false),F("creditOverride","개별 인정학점 (기본값은 과정 배점)","number",[],"",false),txt("reason","학점 정정 사유")]}
+ if(action==="need")f=[F("name","교육 요청명"),F("team","요청 부서"),F("target","교육 대상"),num("count","대상 인원",1),txt("problem","업무상 어려움·교육 요구",true),sel("priority","우선순위",["높음","보통","낮음"]),sel("route","검토 방향",["신규 개발","기존 과정","외부 위탁"]),sel("status","검토 상태",["접수","검토 중","반영"]),sel("course","연결 과정",blank(courseOpts(),"선택 전"),"",false)];
+ if(action==="development")f=[F("name","개발 과정명"),F("target","교육 대상"),txt("goal","교육목표",true),txt("outline","커리큘럼"),txt("materials","교안·실습 자료"),txt("assessment","평가방법"),sel("stage","개발 단계",["초안","검토","시범운영","승인"])];
+ if(action==="evaluation"){const finished=db.enroll.filter(e=>e.status==="수료"&&(v.enroll===e.id||session(e.session).date.startsWith(String(year))));
+ if(!finished.length){toast("평가를 입력할 수료 기록이 없습니다.");return}
+ f=[sel("enroll","수료자·교육 회차",opts(finished,e=>e.person+" · "+session(e.session).date+" · "+course(session(e.session).course).name)),sel("trainer","평가 대상 강사",opts(db.trainers,t=>t.name)),...[["goal","교육목표 달성"],["useful","직무 관련성"],["level","난이도 적정성"],["practice","실습시간 적정성"],["expert","강사 전문성"],["explain","설명 명확성"],["answer","질의응답"],["feedback","실습 피드백"]].map(([k,l])=>sel(k,l,[1,2,3,4,5],4)),txt("comment","교육 개선 의견"),txt("coach","강사에 대한 의견"),txt("applied","교육 후 현업 적용 결과")];}
+ if(action==="competency")f=[F("person","직원명"),F("team","부서"),F("job","직무"),sel("skill","역량",[...new Set([...capabilities,...db.competencies.map(c=>c.skill).filter(Boolean)])]),sel("current","현재 수준",[1,2,3,4,5]),sel("target","목표 수준",[1,2,3,4,5],3),date("assessed","진단일"),txt("memo","진단 근거")];
+ if(action==="goal")f=[num("year","적용 연도",year),F("person","직원명"),sel("area","학점 영역",areas),num("target","목표학점",10)];
+ if(action==="piprecord")f=[num("year","운영 연도",year),F("issue","개선할 업무·선정 이유"),sel("course","운영할 교육과정",courseOpts()),F("target","교육 대상"),F("method","운영 방법","text",[],"워크숍 + 현업 실습"),txt("task","실습·현업 과제",true),txt("metric","교육 효과 확인 지표",true),txt("result","운영 후 적용 결과")];
+ openForm(title+(old?" 상세":" 등록"),f,v,data=>{
+ const r={...v,...data,id:old?.id||uid()};const clash=(key)=>db[table].some(x=>x.id!==r.id&&key(x));
+ if(action==="course"&&r.kind==="어학"&&!r.language.trim())throw Error("교육 언어를 입력하세요.");
+  if(action==="session"){if(r.end<r.date)throw Error("종료일은 시작일 이후로 입력하세요.");if(r.url&&!safeUrl(r.url))throw Error("http 또는 https 링크를 입력하세요.")}
+ if(action==="enrollment"){
+ if(r.status==="수료"&&(!old||old.status!=="수료"||old.session!==r.session||r.awardedCredit==null))r.awardedCredit=Number(course(session(r.session).course).credit);
+ if(clash(x=>x.person===r.person&&x.session===r.session))throw Error("이미 해당 회차에 배정된 직원입니다.");
+ if(r.progress!==""&&(+r.progress<0||+r.progress>100))throw Error("진도율은 0~100으로 입력하세요.");
+ if(r.status==="수료"&&(!r.completed||!r.proof.trim()))throw Error("수료일과 수료 근거를 입력하세요.");
+ if(r.completed&&r.status==="수료"&&r.completed<session(r.session).date)throw Error("수료일은 교육 시작일 이후로 입력하세요.");
+ if(r.evidence&&!safeUrl(r.evidence))throw Error("http 또는 https 링크를 입력하세요.");
+ if(r.creditOverride!==""&&!r.reason.trim())throw Error("개별 인정학점의 정정 사유를 입력하세요.");
+ if(old&&old.creditOverride!==r.creditOverride){if(!r.reason.trim())throw Error("학점 정정 사유를 입력하세요.");db.adjustments.push({enroll:r.id,before:earned(old),after:earned(r),reason:r.reason,date:today})}
+ }
+ if(action==="evaluation"&&clash(x=>x.enroll===r.enroll&&x.trainer===r.trainer))throw Error("해당 수료자와 강사의 평가가 이미 있습니다. 응답 보기에서 수정하세요.");
+ if(action==="competency"&&clash(x=>x.person===r.person&&x.skill===r.skill))throw Error("기존 역량 진단을 선택해 수정하세요.");
+ if(action==="goal"&&clash(x=>x.person===r.person&&x.area===r.area&&+x.year===+r.year))throw Error("같은 연도와 영역의 목표가 있습니다. 기존 목표를 수정하세요.");
+ if(action==="piprecord"&&r.session&&(r.course!==session(r.session)?.course||+r.year!==Number(session(r.session)?.date.slice(0,4))))throw Error("편성된 회차와 같은 과정 및 연도를 선택하세요.");
+ upsert(table,r);if(hook)hook(r);if(action==="session")year=+r.date.slice(0,4);
+ });
+ if(action==="course"){
+  const fields=$("#form").elements;
+  const displayLanguage=()=>{const visible=fields.kind.value==="어학";fields.language.closest("label").hidden=!visible;fields.languageLevel.closest("label").hidden=!visible;fields.language.required=visible};
+  fields.kind.onchange=displayLanguage;displayLanguage();
+ }
+}
+
+</script><script>"use strict";
+const fixedForms=["session","course","need","development","instructor","evaluation","competency","piprecord","enrollment","goal"];
+const yearPages=["budgetPlan","dashboard","annual","sessions","outsource","campus","mandatory","credits","history","ratings","evaluations","pip","match"];
+function render(){
+ const navButton=k=>'<button data-action="go" data-id="'+k+'" class="'+(page===k?"active":"")+'" '+(page===k?'aria-current="page"':'')+'>'+icon(k)+labels[k]+'</button>';
+ const staffMenu=navGroups.map(([group,items])=>'<h3>'+group+'</h3>'+items.map(navButton).join("")).join("");
+ const employeeHeading='<h3>직원 학습공간</h3>';
+ $("#nav").innerHTML=learnerView()?'<h3>화면 전환</h3>'+button("교육담당자 화면","go","dashboard")+employeeHeading+learnerScreens.map(navButton).join(""):navButton("dashboard")+staffMenu+employeeHeading+navButton("myPath")+navButton("apply");
+
+ $("#homeicon").innerHTML=icon("home");$("#crumb").textContent=labels[page];document.title=labels[page]+" · all hands | L&D";
+ const header=document.querySelector(".header-right");
+ header.innerHTML=learnerView()?picker("demoLearner","체험 직원",registeredPeople().sort().map(p=>[p,p]),learner):'<i></i> 교육담당자 화면';
+ if($("#demoLearner"))$("#demoLearner").onchange=e=>{learner=e.target.value;sessionStorage.setItem("ld-public-demo-learner",learner);catalogCourse="";render()};
+ const a=pickView[page];$("#main").innerHTML='<div class="heading"><div><h1>'+labels[page]+'</h1><p class="sub">'+desc[page]+'</p></div><div class="actions">'+(yearPages.includes(page)?yearSelect():"")+(a?button("＋ "+a[0],a[1],"","primary"):"")+'</div></div><div id="body">'+mainScreen()+'</div>';
+ if($("#year"))$("#year").onchange=e=>{year=+e.target.value;render()};bindFilters();
+}
+function bindFilters(){
+ if($("#studyYear"))$("#studyYear").onchange=e=>{studyYear=+e.target.value;render()};
+ if($("#catalogKind"))$("#catalogKind").onchange=e=>{catalogKind=e.target.value;catalogCourse="";render()};
+ if($("#careerEmployee"))$("#careerEmployee").onchange=e=>{activeEmployee=e.target.value;render()};
+ if($("#careerPath"))$("#careerPath").onchange=e=>{activePath=e.target.value;render()};if($("#search"))$("#search").oninput=e=>{filter=e.target.value;const pos=e.target.selectionStart;$("#body").innerHTML=mainScreen();bindFilters();$("#search").focus();$("#search").setSelectionRange(pos,pos)};if($("#person"))$("#person").onchange=e=>{personFilter=e.target.value;render()}}
+function go(next){if(!Object.hasOwn(labels,next))return;page=next;filter="";personFilter="";catalogKind="";catalogCourse="";if(location.hash.slice(1)!==next)history.pushState(null,"","#"+next);setMenu(false);render();window.scrollTo(0,0)}
+onpopstate=()=>go(Object.hasOwn(labels,location.hash.slice(1))?location.hash.slice(1):"dashboard");
+function roster(s){const e=db.enroll.filter(x=>x.session===s.id);showList(course(s.course).name+" · 참여자",tbl(["직원","부서","상태"],e.map(x=>[button(x.person,"enrollment",x.id),esc(x.team),tag(x.status,x.status==="수료"?"done":"plan")]))+button("대상자 배정","addToSession",s.id));}
+function listResponses(type,id){const a=db.evaluations.filter(v=>{const e=db.enroll.find(x=>x.id===v.enroll);return e&&session(e.session).date.startsWith(String(year))&&(type==="sessionResponses"?e.session===id:v.trainer===id)});showList("평가 응답",tbl(["응답자","과정","강사","현업 적용"],a.map(v=>{const e=db.enroll.find(x=>x.id===v.enroll);return[button(e.person,"evaluation",v.id),esc(course(session(e.session).course).name),esc(trainer(v.trainer)?.name),esc(v.applied||"미입력")]})))}
+function copyPrevious(){
+ const previous=db.sessions.filter(s=>s.date.startsWith(String(year-1)));if(!previous.length)return toast("전년도에 편성한 회차가 없습니다.");
+ const shifted=d=>{const y=Number(d.slice(0,4))+1,month=Number(d.slice(5,7)),day=Math.min(Number(d.slice(8,10)),new Date(y,month,0).getDate());return y+"-"+d.slice(5,8)+String(day).padStart(2,"0")};
+ const fresh=previous.filter(s=>!db.sessions.some(t=>t.copyOf===s.id&&t.date.startsWith(String(year))));if(!fresh.length)return toast("이미 불러온 회차입니다.");
+ openForm(year+"년 계획으로 "+fresh.length+"회 복사",[sel("choice","복사할 항목",["교육과정·일정·운영방식 (승인 전 초안)"])],{},()=>fresh.forEach(s=>db.sessions.push({...s,id:uid(),copyOf:s.id,date:shifted(s.date),end:shifted(s.end),status:"예정",approval:"작성 중",cost:0,settle:"정산 예정"})));
+}
+function exportHistory(){const rows=[["직원","부서","과정명","수료일","교육시간","인정학점","증빙"],...hist().filter(e=>relevant(e.person)&&fieldMatch(e.person,e.team,course(session(e.session).course).name,session(e.session).provider)).map(e=>{const c=course(session(e.session).course);return[e.person,e.team,c.name,e.completed,c.hours,earned(e),e.proof]})];const csv=rows.map(r=>r.map(v=>'"'+String(v??"").replace(/^[=+@-]/,"'$&").replaceAll('"','""')+'"').join(",")).join("\r\n");const url=URL.createObjectURL(new Blob(["\ufeff"+csv],{type:"text/csv;charset=utf-8"})),a=document.createElement("a");a.href=url;a.download="교육이력-"+year+".csv";a.click();setTimeout(()=>URL.revokeObjectURL(url),1000)}
+function act(action,id){
+ if(action==="budgetEntry")return budgetEntry(id||"");
+ if(action==="dashboardMonth"){
+  const rows=ss().filter(s=>Number(s.date.slice(5,7))===Number(id)).sort((a,b)=>a.date.localeCompare(b.date));
+  showList(year+"년 "+Number(id)+"월 교육 일정",rows.length?tbl(["시작일","과정","운영 상태"],rows.map(s=>[esc(s.date),button(course(s.course).name,"session",s.id),tag(status(s),actual(s))])):'<p class="empty">편성된 교육 회차가 없습니다.</p>');return;
+ }
+ if(["selfRate","planAdd","planItem","submitPlan","viewPlan","decidePlan","outsideApply","externalResult","annualBudget"].includes(action))return studyAction(action,id);
+ if(["chooseTrack","clearCatalog","applyCourse","requestSeat","withdrawRequest","reviewRequest"].includes(action))return applicationAction(action,id);
+ if(["openProfile","profileEnrollment","languageCourse","editPath","pathStep","careerEvent","languageRecord","chooseLanguage","pathEnroll"].includes(action))return careerAction(action,id);
+ if(action==="go")return go(id);
+ if(fixedForms.includes(action))return edit(action,id);
+ if(action==="scheduleCourse")return edit("session","",page==="language"?{course:id,intake:"접수 중"}:{course:id});
+ if(action==="roster")return roster(session(id));
+ if(action==="addToSession")return edit("enrollment","",{session:id});
+ if(action==="copy")return copyPrevious();
+ if(action==="export")return exportHistory();
+ if(action==="personHistory"){go("history");personFilter=id;return render()}
+ if(action==="sessionResponses"||action==="trainerResponses")return listResponses(action,id);
+ if(action==="fromNeed"){const n=db.needs.find(x=>x.id===id),d=db.dev.find(x=>x.source===id);return edit("development",d?.id||"",{name:n.name,target:n.target,goal:n.problem,source:id},()=>n.status="검토 중")}
+ if(action==="planNeed"){const n=db.needs.find(x=>x.id===id);return edit("session","",{team:n.team,mode:n.route==="외부 위탁"?"외부 위탁":"사내 집합"},s=>{n.course=s.course;n.status="반영"})}
+ if(action==="fromDev"){const d=db.dev.find(x=>x.id===id);return edit("course","",{name:d.name,goal:d.goal,outline:d.outline,criteria:d.assessment},c=>{d.course=c.id;const n=db.needs.find(x=>x.id===d.source);if(n){n.course=c.id;n.status="반영"}})}
+ if(action==="pipOption"){const p=PIP_OPTIONS[Number(id)];return edit("piprecord","",{course:"pc"+id,issue:p[1],task:p[3],metric:p[4],year})}
+ if(action==="pipSession"){const p=db.pip.find(x=>x.id===id);return edit("session","",{course:p.course,team:p.target},s=>{p.session=s.id;p.course=s.course;p.year=+s.date.slice(0,4)})}
+ if(action==="matchCourse"){const [skillId,cid]=id.split("|"),skill=db.competencies.find(x=>x.id===skillId);
+ const a=ss().filter(s=>s.course===cid&&s.end>=today&&s.status!=="종료"&&s.approval==="승인"),assigned=a.filter(s=>db.enroll.some(e=>e.session===s.id&&e.person===skill.person)),avail=a.filter(s=>!assigned.includes(s));
+ if(!a.length){showList("추천 과정 · "+course(cid).name,'<p class="note">'+year+'년 배정 가능한 회차가 없습니다.</p>'+button("회차 편성","scheduleCourse",cid));return}
+ showList(skill.person+" · "+course(cid).name,tbl(["교육 일정","부서","배정"],[...avail.map(s=>[esc(s.date),esc(s.team),button("교육 배정","assignMatch",skillId+"|"+s.id)]),...assigned.map(s=>[esc(s.date),esc(s.team),tag("배정됨","done")])]));return}
+ if(action==="assignMatch"){const [k,sid]=id.split("|"),s=db.competencies.find(x=>x.id===k);return edit("enrollment","",{session:sid,person:s.person,team:s.team})}
+}
+document.addEventListener("click",e=>{const b=e.target.closest("[data-action]");if(b){e.preventDefault();act(b.dataset.action,b.dataset.id)}});
+$("#form").onsubmit=e=>{e.preventDefault();const before=structuredClone(db);try{const data=Object.fromEntries([...new FormData(e.target)].map(([k,v])=>[k,String(v).trim()]));saveAction(data);persist();$("#dialog").close();render();toast("저장했습니다.")}catch(err){db=before;toast(err.name==="QuotaExceededError"?"저장 공간이 부족합니다.":err.message)}};
+$("#close").onclick=$("#cancel").onclick=()=>$("#dialog").close();
+function setMenu(open){
+ $("#sidebar").classList.toggle("open",open);
+ $("#menubtn").setAttribute("aria-expanded",String(open));
+ if(open)$("#nav .active").focus();
+}
+$("#menubtn").onclick=()=>setMenu(!$("#sidebar").classList.contains("open"));
+$("#nav-shade").onclick=()=>{setMenu(false);$("#menubtn").focus()};
+document.addEventListener("keydown",e=>{if(e.key==="Escape"&&$("#sidebar").classList.contains("open")){setMenu(false);$("#menubtn").focus()}});
+matchMedia("(max-width:900px)").addEventListener("change",()=>setMenu(false));render();
+
+</script></body></html>
