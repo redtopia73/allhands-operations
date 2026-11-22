@@ -1,23 +1,42 @@
 {
   "cleanUrls": true,
   "rewrites": [
-    { "source": "/education", "destination": "/demo/ld" },
-    { "source": "/ld", "destination": "/demo/ld" }
+    {
+      "source": "/education",
+      "destination": "/demo/ld"
+    },
+    {
+      "source": "/ld",
+      "destination": "/demo/ld"
+    }
   ],
   "headers": [
     {
       "source": "/operations-sw.js",
       "headers": [
-        { "key": "Cache-Control", "value": "public, max-age=0, must-revalidate" },
-        { "key": "Service-Worker-Allowed", "value": "/" }
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=0, must-revalidate"
+        },
+        {
+          "key": "Service-Worker-Allowed",
+          "value": "/"
+        }
       ]
     },
     {
       "source": "/operations.webmanifest",
       "headers": [
-        { "key": "Content-Type", "value": "application/manifest+json; charset=utf-8" },
-        { "key": "Cache-Control", "value": "public, max-age=0, must-revalidate" }
+        {
+          "key": "Content-Type",
+          "value": "application/manifest+json; charset=utf-8"
+        },
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=0, must-revalidate"
+        }
       ]
     }
-  ]
+  ],
+  "buildCommand": "node scripts/product-wordmarks.mjs"
 }
