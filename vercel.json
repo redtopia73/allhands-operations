@@ -38,5 +38,6 @@
       ]
     }
   ],
-  "buildCommand": "node scripts/product-wordmarks.mjs"
+  "buildCommand": "node scripts/product-wordmarks.mjs",
+  "outputDirectory": "."
 }
