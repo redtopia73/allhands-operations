@@ -11,7 +11,7 @@
     <path d="M232 13h15v66h-15Z"/>
     <g transform="translate(252 27)"><path fill-rule="evenodd" d="M25 0c16 0 25 11 25 27v4H16c2 6 6 9 13 9 5 0 9-2 13-5l7 10c-5 5-13 8-22 8C11 53 0 42 0 27 0 12 10 0 25 0Zm0 12c-5 0-9 3-10 9h20c-1-6-4-9-10-9Z"/></g>
   </g>
-    <g fill-rule="evenodd" transform="translate(215.7 10) scale(.148) translate(-1269 -165)">
+    <g fill-rule="evenodd" transform="translate(159.8 .5) scale(.25) translate(-1269 -165)">
       <path d="M1300 191Q1315 191 1323 201V193H1341V260H1323V252
       Q1315 262 1300 262C1282 262 1269 247 1269 227S1282 191 1300 191Z
       M1306 207C1295 207 1288 215 1288 227S1295 246 1306 246

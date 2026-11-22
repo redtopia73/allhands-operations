@@ -30,7 +30,7 @@ for (const { id, page } of products) {
   }
 
   const assetBase = 'https://allhands-operations.vercel.app/demo/brand/';
-  const card = assetBase + id + '-card.jpg';
+  const card = assetBase + id + '-card.jpg' + (id === 'ld' ? '' : '?v=3');
   const oldHead = html.slice(0, html.indexOf('</head>'));
   const head = oldHead
     .replace(/(<meta (?:property|name)="(?:og:image(?::secure_url)?|twitter:image)" content=")[^"]+"/g, '$1' + card + '"')
