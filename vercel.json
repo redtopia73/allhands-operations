@@ -1,6 +1,9 @@
 {
   "cleanUrls": true,
-  "rewrites": [{ "source": "/education", "destination": "/demo/ld" }],
+  "rewrites": [
+    { "source": "/education", "destination": "/demo/ld" },
+    { "source": "/ld", "destination": "/demo/ld" }
+  ],
   "headers": [
     {
       "source": "/operations-sw.js",
@@ -18,4 +21,3 @@
     }
   ]
 }
-
