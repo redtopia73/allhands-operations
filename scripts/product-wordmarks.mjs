@@ -25,6 +25,11 @@ for (const { id, page } of products) {
     if (!match) throw new Error('Missing product navigation in ' + page);
     const config = JSON.parse(match[2]);
     if (config.product.toLowerCase() !== id || !config.logo) throw new Error('Unexpected product logo in ' + page);
+    if (id === 'people') {
+      const { records, ...otherItems } = config.menu;
+      delete otherItems.culture;
+      config.menu = { records, culture: '조직문화 진단', ...otherItems };
+    }
     config.logo = logo;
     html = source.replace(configLine, () => match[1] + JSON.stringify(config).replaceAll('<', '\\u003c') + ';');
   }
